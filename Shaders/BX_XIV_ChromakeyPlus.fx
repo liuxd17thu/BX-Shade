@@ -5,132 +5,161 @@
 
 #include "Reshade.fxh"
 #include "ffxiv_common.fxh"
+#include "BX_Multilingual.fxh"
 
 #define DEG_OF_PI 57.2957795
 
 uniform bool bDebug<
-    ui_label = "Show Chromakey Pivot";
-    ui_tooltip = "Remember to disable this when taking a screenshot.";
+    LABEL("Show Chromakey Pivot", "显示幕布基点")
+    TOOLTIP("Remember to disable this when taking a screenshot.", "记得截图时关掉这个。")
 > = true;
 
 uniform float fDebug_R<
-    ui_label = "Pivot Radius";
+    LABEL("Pivot Radius", "基点半径")
     ui_type = "drag";
     ui_step = 1;
 > = 10;
 
 uniform bool bAlpha<
-    ui_label = "Alpha Transparency";
-    ui_tooltip = "You also need to untick the \"Clear Alpha Channel\" in ReShade/GShade's Settings tab.";
+    LABEL("Alpha Transparency", "透明度抠像")
+    TOOLTIP("You also need to untick the \"Clear Alpha Channel\" in ReShade/GShade's Settings tab.", \
+            "同时需要在ReShade/GShade设置页关闭“清除Alpha通道”功能。")
 > = false;
 
 uniform float fCKGradient<
     ui_type = "drag";
-    ui_label = "Chromakey Gradient";
+    LABEL("Chromakey Gradient", "幕布渐变")
+    TOOLTIP("Smooth the intersection between chromakey and scene.", "平滑幕布与场景相交的位置。")
     ui_min = 0; ui_max = 0.5;
     ui_step = 0.0001;
 > = 0.0;
 
 uniform bool bCKEnable<
-    ui_category = "Chromakey#1";
+    CATEGORY("Chromakey #1", "幕布 #1")
+    LABEL("Enable This Chromakey", "启用此幕布")
 > = true;
 
 uniform float2 fCKBase<
     ui_type = "slider";
-    ui_category = "Chromakey#1";
+    CATEGORY("Chromakey #1", "幕布 #1")
     ui_min = 0; ui_max = 1;
-    ui_label = "Base Point";
+    LABEL("Base Point", "基点")
+    TOOLTIP("Set the position of base point in screen space.\nYou can still rotate the chromakey.", \
+            "设定幕布基点在屏幕空间中的位置。\n冻结后仍然可以旋转幕布。")
 > = float2(0.5f, 0.5f);
 
 uniform bool bCKFreeze<
-    ui_category = "Chromakey#1";
+    CATEGORY("Chromakey #1", "幕布 #1")
+    LABEL("Freeze", "冻结基点")
+    TOOLTIP("Freeze the base point into world space.", "将幕布基点冻结于游戏世界空间中。")
 > = false;
 
 uniform float fCKTheta<
     ui_type = "slider";
-    ui_category = "Chromakey#1";
+    CATEGORY("Chromakey #1", "幕布 #1")
     ui_min = -180; ui_max = 180; ui_step = 1;
-    ui_label = "Rotate";
+    ui_units = "°";
+    LABEL("Rotate Horizontally", "水平旋转")
+    TOOLTIP("Rotate the chromakey about the vertical axis goes through the base point.", "围绕过基点的竖直轴旋转幕布。")
 > = 0f;
 
 uniform float fCKPhi<
     ui_type = "slider";
-    ui_category = "Chromakey#1";
+    CATEGORY("Chromakey #1", "幕布 #1")
     ui_min = -90; ui_max = 90; ui_step = 1;
-    ui_label = "Up & Down";
+    ui_units = "°";
+    LABEL("Rotate Vertically", "俯仰旋转")
+    TOOLTIP("Rotate the chromakey up and down.", "上下旋转幕布。")
 > = 0f;
 
 uniform float3 fCKColor<
     ui_type = "color";
-    ui_category = "Chromakey#1";
+    CATEGORY("Chromakey #1", "幕布 #1")
     ui_min = 0; ui_max = 1;
-    ui_label = "Color";
+    LABEL("Chromakey Color", "幕布颜色")
 > = float3(0.29, 0.84, 0.36);
 
 uniform float fCKZOffset<
     ui_type = "drag";
-    ui_category = "Chromakey#1";
+    CATEGORY("Chromakey #1", "幕布 #1")
     ui_step = 0.1;
-    ui_label = "Z offset";
+    LABEL("Z Offset", "Z轴修正")
+    TOOLTIP("Shift the chromakey slightly, to reduce the flickers / zebra lines / half opacity when keying the floor.\nOnly available when `Rotate Vertically` = 90 or -90.", \
+            "微调幕布位置，减少抠像地板时出现的闪烁/条纹/半透明。\n仅在`俯仰旋转`设为正负90时有效。")
 > = 0.0f;
 
 uniform float fCKZOffsetScale<
     ui_type = "drag";
-    ui_category = "Chromakey#1";
+    CATEGORY("Chromakey #1", "幕布 #1")
     ui_step = 1;
     ui_units = "x";
-    ui_label = "Z offset Scale";
+    LABEL("Z Offset Scale", "Z轴修正倍率")
+    TOOLTIP("Multiplier for `Z Offset`, usually 1000x is OK.", \
+            "`Z轴修正`的倍率，一般1000倍即可。")
 > = 1000;
 
 uniform bool bCK2Enable<
-    ui_category = "Chromakey#2";
+    CATEGORY("Chromakey #2", "幕布 #2")
+    LABEL("Enable This Chromakey", "启用此幕布")
 > = false;
 
 uniform float2 fCK2Base<
     ui_type = "slider";
-    ui_category = "Chromakey#2";
+    CATEGORY("Chromakey #2", "幕布 #2")
     ui_min = 0; ui_max = 1;
-    ui_label = "Base Point";
+    LABEL("Base Point", "基点")
+    TOOLTIP("Set the position of base point in screen space.\nYou can still rotate the chromakey.", \
+            "设定幕布基点在屏幕空间中的位置。\n冻结后仍然可以旋转幕布。")    
 > = float2(0.5f, 0.5f);
 
 uniform bool bCK2Freeze<
-    ui_category = "Chromakey#2";
+    CATEGORY("Chromakey #2", "幕布 #2")
+    LABEL("Freeze", "冻结基点")
+    TOOLTIP("Freeze the base point into world space.", "将幕布基点冻结于游戏世界空间中。")
 > = false;
 
 uniform float fCK2Theta<
     ui_type = "slider";
-    ui_category = "Chromakey#2";
+    CATEGORY("Chromakey #2", "幕布 #2")
     ui_min = -180; ui_max = 180; ui_step = 1;
-    ui_label = "Rotate";
+    ui_units = "°";
+    LABEL("Rotate Horizontally", "水平旋转")
+    TOOLTIP("Rotate the chromakey about the vertical axis goes through the base point.", "围绕过基点的竖直轴旋转幕布。")
 > = 90f;
 
 uniform float fCK2Phi<
     ui_type = "slider";
-    ui_category = "Chromakey#2";
+    CATEGORY("Chromakey #2", "幕布 #2")
     ui_min = -90; ui_max = 90; ui_step = 1;
-    ui_label = "Up & Down";
+    ui_units = "°";
+    LABEL("Rotate Vertically", "俯仰旋转")
+    TOOLTIP("Rotate the chromakey up and down.", "上下旋转幕布。")
 > = 0f;
 
 uniform float3 fCK2Color<
     ui_type = "color";
-    ui_category = "Chromakey#2";
+    CATEGORY("Chromakey #2", "幕布 #2")
     ui_min = 0; ui_max = 1;
-    ui_label = "Color";
+    LABEL("Chromakey Color", "幕布颜色")
 > = float3(0.07, 0.18, 0.72);
 
 uniform float fCK2ZOffset<
     ui_type = "drag";
-    ui_category = "Chromakey#2";
+    CATEGORY("Chromakey #2", "幕布 #2")
     ui_step = 0.1;
-    ui_label = "Z offset";
+    LABEL("Z Offset", "Z轴修正")
+    TOOLTIP("Shift the chromakey slightly, to reduce the flickers / zebra lines / half opacity when keying the floor.\nOnly available when `Rotate Vertically` = 90 or -90.", \
+            "微调幕布位置，减少抠像地板时出现的闪烁/条纹/半透明。\n仅在`俯仰旋转`设为正负90时有效。")
 > = 0.0f;
 
 uniform float fCK2ZOffsetScale<
     ui_type = "drag";
-    ui_category = "Chromakey#2";
+    CATEGORY("Chromakey #2", "幕布 #2")
     ui_step = 1;
     ui_units = "x";
-    ui_label = "Z offset Scale";
+    LABEL("Z Offset Scale", "Z轴修正倍率")
+    TOOLTIP("Multiplier for `Z Offset`, usually 1000x is OK.", \
+            "`Z轴修正`的倍率，一般1000倍即可。")
 > = 1000;
 
 // uniform int iScreenDBG<
@@ -219,7 +248,18 @@ float4 DrawChromakey(float4 pos : SV_POSITION, float2 texcoords : TEXCOORD) : SV
 
 technique BX_XIVChromakeyPlus
 <
-    ui_label = "BX_XIVChromakeyPlus";
+    LABEL("BX_XIVChromakeyPlus - Alpha", "BX::XIV色键抠像增强(测试版)[BX_XIVChromakeyPlus]")
+    TOOLTIP( \
+        "!!! THIS SHADER NEEDS REST ADDON & FFXIV SPECIFIC CONFIG TO WORK !!!\n" \
+        "Advanced chromakey, allowing you to set 2 chromakeys in the *game world space*, adjust direction and pin them!\n" \
+        "Author: BarricadeMKXX, License: (TBD)\n" \
+        "Credits to Alex (4lex4nder) for his REST addon and ffxiv configuration!" \
+        , \
+        "!!！本着色器需要REST插件及FF14特化配置文件方可正常使用 !!!\n" \
+        "高级版色键抠像，允许在*游戏世界空间中*设置两个绿幕，调节朝向并固定它们！\n" \
+        "作者：路障MKXX，许可证：（待定）\n" \
+        "感谢Alex (4lex4nder) 的REST插件及FF14特化配置文件。" \
+    )
 >
 {
     pass passGenPos{
