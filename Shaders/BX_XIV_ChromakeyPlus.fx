@@ -1,5 +1,5 @@
 // Author: BarricadeMKXX
-// 2023-09-02
+// 2023-09-04
 // Working in progress
 // License: TBD
 
@@ -7,6 +7,29 @@
 #include "ffxiv_common.fxh"
 
 #define DEG_OF_PI 57.2957795
+
+uniform bool bDebug<
+    ui_label = "Show Chromakey Pivot";
+    ui_tooltip = "Remember to disable this when taking a screenshot.";
+> = true;
+
+uniform float fDebug_R<
+    ui_label = "Pivot Radius";
+    ui_type = "drag";
+    ui_step = 1;
+> = 10;
+
+uniform bool bAlpha<
+    ui_label = "Alpha Transparency";
+    ui_tooltip = "You also need to untick the \"Clear Alpha Channel\" in ReShade/GShade's Settings tab.";
+> = false;
+
+uniform float fCKGradient<
+    ui_type = "drag";
+    ui_label = "Chromakey Gradient";
+    ui_min = 0; ui_max = 0.5;
+    ui_step = 0.0001;
+> = 0.0;
 
 uniform bool bCKEnable<
     ui_category = "Chromakey#1";
@@ -117,16 +140,6 @@ uniform float fCK2ZOffsetScale<
 //     ui_items = "xy\0yz\0zx\0";
 // > = 0;
 
-uniform bool bDebug = true;
-uniform float fDebug_VertOff<
-    ui_type = "drag";
-    ui_step = 1;
-> = 0;
-uniform float fDebug_R<
-    ui_type = "drag";
-    ui_step = 1;
-> = 10;
-
 texture texWorldBase{ Width = 1; Height=2; Format = RGBA32F; };
 sampler sampWorldBase { Texture = texWorldBase; };
 storage2D wWorldBase { Texture = texWorldBase; };
@@ -136,9 +149,9 @@ float GetDepth(float2 texcoords)
     return tex2Dlod(ReShade::DepthBuffer, float4(texcoords, 0, 0)).x;
 }
 
-int CheckPlaneFrontBack(float3 PlaneBase, float3 normal, float3 Point)
+float CheckPlaneFrontBack(float3 PlaneBase, float3 normal, float3 Point)
 {
-    return sign(dot(PlaneBase - Point, normal));
+    return dot(PlaneBase - Point, normal);
 }
 
 void SetChromakeyPosCS(uint3 id : SV_DispatchThreadID)
@@ -157,9 +170,9 @@ void SetChromakeyPosCS(uint3 id : SV_DispatchThreadID)
     //     worldPos = bCK2Freeze ? prev2 : float4(CK2BaseInWorld, 0);
 }
 
-float3 DrawChromakey(float4 pos : SV_POSITION, float2 texcoords : TEXCOORD) : SV_TARGET
+float4 DrawChromakey(float4 pos : SV_POSITION, float2 texcoords : TEXCOORD) : SV_TARGET
 {
-    float3 Screen[2] = { fCKColor, fCK2Color };
+    float4 Screen[2] = { float4(fCKColor, 1), float4(fCK2Color, 1) };
     float4 worldPos = float4(FFXIV::get_world_position_from_uv(texcoords, GetDepth(texcoords)), 1);
     float3 direction = float3(sin(fCKTheta / DEG_OF_PI) * cos(fCKPhi / DEG_OF_PI), -cos(fCKTheta / DEG_OF_PI) * cos(fCKPhi / DEG_OF_PI), -sin(fCKPhi / DEG_OF_PI));
     float3 direction2 = float3(sin(fCK2Theta / DEG_OF_PI) * cos(fCK2Phi / DEG_OF_PI), -cos(fCK2Theta / DEG_OF_PI) * cos(fCK2Phi / DEG_OF_PI), -sin(fCK2Phi / DEG_OF_PI));
@@ -169,27 +182,38 @@ float3 DrawChromakey(float4 pos : SV_POSITION, float2 texcoords : TEXCOORD) : SV
     float3 CK2BaseInWorld = tex2Dfetch(sampWorldBase, int2(0,1)).xyz;
     
     // FFXIV needs to use xzy, too weird
-    int fb = CheckPlaneFrontBack(CKBaseInWorld + float3(0, 0, (abs(fCKPhi)==90) * fCKZOffset * fCKZOffsetScale), direction.xzy, worldPos.xyz);
-    int fb2 = CheckPlaneFrontBack(CK2BaseInWorld + float3(0, 0, (abs(fCK2Phi)==90) * fCK2ZOffset * fCK2ZOffsetScale), direction2.xzy, worldPos.xyz);
-    //int fb = CheckPlaneFrontBack(CKBaseInWorld, direction.xzy, worldPos.xyz);
+    float fb = CheckPlaneFrontBack(CKBaseInWorld + float3(0, 0, (abs(fCKPhi)==90) * fCKZOffset * fCKZOffsetScale), direction.xzy, worldPos.xyz);
+    float fb2 = CheckPlaneFrontBack(CK2BaseInWorld + float3(0, 0, (abs(fCK2Phi)==90) * fCK2ZOffset * fCK2ZOffsetScale), direction2.xzy, worldPos.xyz);
+    //float fb = CheckPlaneFrontBack(CKBaseInWorld, direction.xzy, worldPos.xyz);
 
     float2 offset = (texcoords - FFXIV::get_uv_from_world_position(CKBaseInWorld).xy) / ReShade::PixelSize;
     float2 offset2 = (texcoords - FFXIV::get_uv_from_world_position(CK2BaseInWorld).xy) / ReShade::PixelSize;
 
-    float3 res = (tex2D(ReShade::BackBuffer, texcoords).rgb);
+    float4 res = float4(tex2D(ReShade::BackBuffer, texcoords).rgb, 1.0);
 
-    if(bCKEnable && fb <= 0){
-        res = Screen[0];
-        if(bCK2Enable && fb2 <= 0)
-            res = (res + Screen[1]) * 0.5;
+    // mask : 0 = chromakey screen, 1 = image
+    float2 mask = float2(smoothstep(-fCKGradient, fCKGradient, fb), smoothstep(-fCKGradient, fCKGradient, fb2));
+    if(!bCKEnable){
+        mask.x = 1.0;
+        // res = bAlpha    ? lerp(0, res, mask.x)
+        //                 : lerp(Screen[0], res, mask.y);
     }
-    else if(bCK2Enable && fb2 <= 0)
-        res = Screen[1];
+    if(!bCK2Enable){
+        mask.y = 1.0;
+        // res = bAlpha    ? lerp(0, res, mask.y)
+        //                 : lerp(Screen[1], res, mask);
+    }
+
+    if(bAlpha)
+        res = lerp(0, res, min(mask.x, mask.y));
+    else{
+        res = lerp(lerp(Screen[1], Screen[0], (1 + mask.y - mask.x) / 2), res, min(mask.x, mask.y));
+    }
 
     if(bDebug && bCKEnable && length(offset) < fDebug_R)
-        res = float3(0,ReShade::GetLinearizedDepth(texcoords),0);
+        res = float4(0.5, 1, 0.5, 1);
     if(bDebug && bCK2Enable && length(offset2) < fDebug_R)
-        res = float3(0,0,ReShade::GetLinearizedDepth(texcoords));
+        res = float4(0.5, 0.5, 1, 1);
     return res;
 }
 
