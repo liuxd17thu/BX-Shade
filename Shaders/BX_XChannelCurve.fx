@@ -38,7 +38,7 @@ namespace XChannelCurve {
 		ui_min = 0; ui_max = 1;
 		TOOLTIP("Setting to 1 = Enable the process. I~IV one by one.", "设为1表示使用相应过程，I~IV依次接力。")
 		CATEGORY("Process", "过程")
-	> = int4(1,0,0,0);
+	> = int4(1,1,1,1);
 
     uniform int iCh1_In<
         LABEL("Select Input", "输入选择")
