@@ -1,5 +1,5 @@
 // Author: BarricadeMKXX
-// 2023-09-04
+// 2023-09-17
 // Working in progress
 // License: TBD
 
@@ -44,14 +44,14 @@ uniform float2 fCKBase<
     CATEGORY("Chromakey #1", "幕布 #1")
     ui_min = 0; ui_max = 1;
     LABEL("Base Point", "基点")
-    TOOLTIP("Set the position of base point in screen space.\nYou can still rotate the chromakey.", \
-            "设定幕布基点在屏幕空间中的位置。\n冻结后仍然可以旋转幕布。")
+    TOOLTIP("Set the position of base point in screen space.", \
+            "设定幕布基点在屏幕空间中的位置。")
 > = float2(0.5f, 0.5f);
 
 uniform bool bCKFreeze<
     CATEGORY("Chromakey #1", "幕布 #1")
     LABEL("Freeze", "冻结基点")
-    TOOLTIP("Freeze the base point into world space.", "将幕布基点冻结于游戏世界空间中。")
+    TOOLTIP("Freeze the base point into world space.\nYou can still rotate the chromakey.", "将幕布基点冻结于游戏世界空间中。\n冻结后仍然可以旋转幕布。")
 > = false;
 
 uniform float fCKTheta<
@@ -91,12 +91,12 @@ uniform float fCKZOffset<
 uniform float fCKZOffsetScale<
     ui_type = "drag";
     CATEGORY("Chromakey #1", "幕布 #1")
-    ui_step = 1;
+    ui_step = 1; ui_min = -25; ui_max = 25;
     ui_units = "x";
-    LABEL("Z Offset Scale", "Z轴修正倍率")
-    TOOLTIP("Multiplier for `Z Offset`, usually 1000x is OK.", \
-            "`Z轴修正`的倍率，一般1000倍即可。")
-> = 1000;
+    LABEL("Z Offset Ext", "Z轴修正指数")
+    TOOLTIP("Multiplier exponent (N in \"2^N\") for `Z Offset`, usually 10 = 1024x is OK.\nIf nothing happens when adjusting `Z Offset`, try adjusting this or doing a force-reload.", \
+            "`Z轴修正`的倍率指数（“2^N倍”中的N值），一般取10 = 1024倍即可。\n如果调整`Z轴修正`无事发生，则可能需要调节该选项，或者尝试强制重新加载所有着色器。")
+> = 10;
 
 uniform bool bCK2Enable<
     CATEGORY("Chromakey #2", "幕布 #2")
@@ -108,14 +108,14 @@ uniform float2 fCK2Base<
     CATEGORY("Chromakey #2", "幕布 #2")
     ui_min = 0; ui_max = 1;
     LABEL("Base Point", "基点")
-    TOOLTIP("Set the position of base point in screen space.\nYou can still rotate the chromakey.", \
-            "设定幕布基点在屏幕空间中的位置。\n冻结后仍然可以旋转幕布。")    
+    TOOLTIP("Set the position of base point in screen space.", \
+            "设定幕布基点在屏幕空间中的位置。")
 > = float2(0.5f, 0.5f);
 
 uniform bool bCK2Freeze<
     CATEGORY("Chromakey #2", "幕布 #2")
     LABEL("Freeze", "冻结基点")
-    TOOLTIP("Freeze the base point into world space.", "将幕布基点冻结于游戏世界空间中。")
+    TOOLTIP("Freeze the base point into world space.\nYou can still rotate the chromakey.", "将幕布基点冻结于游戏世界空间中。\n冻结后仍然可以旋转幕布。")
 > = false;
 
 uniform float fCK2Theta<
@@ -155,12 +155,12 @@ uniform float fCK2ZOffset<
 uniform float fCK2ZOffsetScale<
     ui_type = "drag";
     CATEGORY("Chromakey #2", "幕布 #2")
-    ui_step = 1;
+    ui_step = 1; ui_min = -25; ui_max = 25;
     ui_units = "x";
-    LABEL("Z Offset Scale", "Z轴修正倍率")
-    TOOLTIP("Multiplier for `Z Offset`, usually 1000x is OK.", \
-            "`Z轴修正`的倍率，一般1000倍即可。")
-> = 1000;
+    LABEL("Z Offset Ext", "Z轴修正指数")
+    TOOLTIP("Multiplier exponent (N in \"2^N\") for `Z Offset`, usually 10 = 1024x is OK.\nIf nothing happens when adjusting `Z Offset`, try adjusting this or doing a force-reload.", \
+            "`Z轴修正`的倍率指数（“2^N倍”中的N值），一般取10 = 1024倍即可。\n如果调整`Z轴修正`无事发生，则可能需要调节该选项，或者尝试强制重新加载所有着色器。")
+> = 10;
 
 // uniform int iScreenDBG<
 //     ui_type = "combo";
@@ -211,8 +211,8 @@ float4 DrawChromakey(float4 pos : SV_POSITION, float2 texcoords : TEXCOORD) : SV
     float3 CK2BaseInWorld = tex2Dfetch(sampWorldBase, int2(0,1)).xyz;
     
     // FFXIV needs to use xzy, too weird
-    float fb = CheckPlaneFrontBack(CKBaseInWorld + float3(0, 0, (abs(fCKPhi)==90) * fCKZOffset * fCKZOffsetScale), direction.xzy, worldPos.xyz);
-    float fb2 = CheckPlaneFrontBack(CK2BaseInWorld + float3(0, 0, (abs(fCK2Phi)==90) * fCK2ZOffset * fCK2ZOffsetScale), direction2.xzy, worldPos.xyz);
+    float fb = CheckPlaneFrontBack(CKBaseInWorld + float3(0, 0, (abs(fCKPhi)==90) * fCKZOffset * pow(2,fCKZOffsetScale)), direction.xzy, worldPos.xyz);
+    float fb2 = CheckPlaneFrontBack(CK2BaseInWorld + float3(0, 0, (abs(fCK2Phi)==90) * fCK2ZOffset * pow(2,fCK2ZOffsetScale)), direction2.xzy, worldPos.xyz);
     //float fb = CheckPlaneFrontBack(CKBaseInWorld, direction.xzy, worldPos.xyz);
 
     float2 offset = (texcoords - FFXIV::get_uv_from_world_position(CKBaseInWorld).xy) / ReShade::PixelSize;
