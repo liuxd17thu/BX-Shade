@@ -89,11 +89,10 @@ uniform float fCKZOffset<
 > = 0.0f;
 
 uniform float fCKZOffsetScale<
-    ui_type = "drag";
+    ui_type = "slider";
     CATEGORY("Chromakey #1", "幕布 #1")
     ui_step = 1; ui_min = -25; ui_max = 25;
-    ui_units = "x";
-    LABEL("Z Offset Ext", "Z轴修正指数")
+    LABEL("Z Offset Exp", "Z轴修正指数")
     TOOLTIP("Multiplier exponent (N in \"2^N\") for `Z Offset`, usually 10 = 1024x is OK.\nIf nothing happens when adjusting `Z Offset`, try adjusting this or doing a force-reload.", \
             "`Z轴修正`的倍率指数（“2^N倍”中的N值），一般取10 = 1024倍即可。\n如果调整`Z轴修正`无事发生，则可能需要调节该选项，或者尝试强制重新加载所有着色器。")
 > = 10;
@@ -153,11 +152,10 @@ uniform float fCK2ZOffset<
 > = 0.0f;
 
 uniform float fCK2ZOffsetScale<
-    ui_type = "drag";
+    ui_type = "slider";
     CATEGORY("Chromakey #2", "幕布 #2")
     ui_step = 1; ui_min = -25; ui_max = 25;
-    ui_units = "x";
-    LABEL("Z Offset Ext", "Z轴修正指数")
+    LABEL("Z Offset Exp", "Z轴修正指数")
     TOOLTIP("Multiplier exponent (N in \"2^N\") for `Z Offset`, usually 10 = 1024x is OK.\nIf nothing happens when adjusting `Z Offset`, try adjusting this or doing a force-reload.", \
             "`Z轴修正`的倍率指数（“2^N倍”中的N值），一般取10 = 1024倍即可。\n如果调整`Z轴修正`无事发生，则可能需要调节该选项，或者尝试强制重新加载所有着色器。")
 > = 10;
