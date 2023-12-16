@@ -92,6 +92,7 @@ void PS_CubeLUT1D_Apply(float4 vpos : SV_Position, float2 texcoord : TEXCOORD, o
         }
         default:
         {
+            color = (color - 0.5) *((CUBE_1D_SIZE - 1.0) / CUBE_1D_SIZE) + 0.5;
             lutcolor = float3(tex1D(sampCube1D, color.x).x, tex1D(sampCube1D, color.y).y, tex1D(sampCube1D, color.z).z);
             break;
         }

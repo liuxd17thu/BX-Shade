@@ -123,6 +123,7 @@ void PS_CubeLUT3D_Apply(float4 vpos : SV_Position, float2 texcoord : TEXCOORD, o
         }
         default:
         {
+            color = (color - 0.5) *((CUBE_3D_SIZE - 1.0) / CUBE_3D_SIZE) + 0.5;
             lutcolor = tex3D(sampCube3D, color.xyz).xyz;
             break;
         }
