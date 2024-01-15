@@ -4,7 +4,15 @@
 // License: TBD
 
 #include "Reshade.fxh"
-#include "ffxiv_common.fxh"
+#if __APPLICATION__ == 0x6f24790f
+    #if exists "ffxiv_common.fxh"
+        #include "ffxiv_common.fxh"
+    #else
+        #error "XIV_ChromakeyPlus needs REST addon and ffxiv_common.fxh to work correctly."
+    #endif
+#else
+    #error "XIV_ChromakeyPlus can only work with REST addon in Final Fantasy XIV (DX11)."
+#endif
 #include "BX_Multilingual.fxh"
 
 #define DEG_OF_PI 57.2957795
@@ -36,7 +44,8 @@ uniform float fCKGradient<
 
 uniform bool bCKEnable<
     CATEGORY("Chromakey #1", "幕布 #1")
-    LABEL("Enable This Chromakey", "启用此幕布")
+    LABEL("Enable Chromakey #1", "启用幕布#1")
+    ui_category_toggle = true;
 > = true;
 
 uniform float2 fCKBase<
@@ -92,14 +101,15 @@ uniform float fCKZOffsetScale<
     ui_type = "slider";
     CATEGORY("Chromakey #1", "幕布 #1")
     ui_step = 1; ui_min = -25; ui_max = 25;
-    LABEL("Z Offset Exp", "Z轴修正指数")
+    LABEL("Z Offset Ext", "Z轴修正指数")
     TOOLTIP("Multiplier exponent (N in \"2^N\") for `Z Offset`, usually 10 = 1024x is OK.\nIf nothing happens when adjusting `Z Offset`, try adjusting this or doing a force-reload.", \
             "`Z轴修正`的倍率指数（“2^N倍”中的N值），一般取10 = 1024倍即可。\n如果调整`Z轴修正`无事发生，则可能需要调节该选项，或者尝试强制重新加载所有着色器。")
 > = 10;
 
 uniform bool bCK2Enable<
     CATEGORY("Chromakey #2", "幕布 #2")
-    LABEL("Enable This Chromakey", "启用此幕布")
+    LABEL("Enable Chromakey #2", "启用幕布#2")
+    ui_category_toggle = true;
 > = false;
 
 uniform float2 fCK2Base<
@@ -155,7 +165,7 @@ uniform float fCK2ZOffsetScale<
     ui_type = "slider";
     CATEGORY("Chromakey #2", "幕布 #2")
     ui_step = 1; ui_min = -25; ui_max = 25;
-    LABEL("Z Offset Exp", "Z轴修正指数")
+    LABEL("Z Offset Ext", "Z轴修正指数")
     TOOLTIP("Multiplier exponent (N in \"2^N\") for `Z Offset`, usually 10 = 1024x is OK.\nIf nothing happens when adjusting `Z Offset`, try adjusting this or doing a force-reload.", \
             "`Z轴修正`的倍率指数（“2^N倍”中的N值），一般取10 = 1024倍即可。\n如果调整`Z轴修正`无事发生，则可能需要调节该选项，或者尝试强制重新加载所有着色器。")
 > = 10;

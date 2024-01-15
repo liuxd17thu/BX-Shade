@@ -1,7 +1,7 @@
 // Simple Cross Channel Curve Tool For Fun!
-// version 0.1.0
-// Copyright (c) 2023 BarricadeMKXX
-// License: (To Be Done. Now: All rights reserved.
+// version 0.2.0
+// Copyright (c) 2023-2024 BarricadeMKXX
+// License: MIT
 
 #include "ReShade.fxh"
 #include "ReShadeUI.fxh"
@@ -32,13 +32,19 @@ namespace XChannelCurve {
 	#endif
 	>;
 
-	uniform int4 iUseChannel<
-		LABEL("Enable Process", "启用过程")
-		ui_type = "slider";
-		ui_min = 0; ui_max = 1;
-		TOOLTIP("Setting to 1 = Enable the process. I~IV one by one.", "设为1表示使用相应过程，I~IV依次接力。")
-		CATEGORY("Process", "过程")
-	> = int4(1,1,1,1);
+	// uniform int4 iUseChannel<
+	// 	LABEL("Enable Process", "启用过程")
+	// 	ui_type = "slider";
+	// 	ui_min = 0; ui_max = 1;
+	// 	TOOLTIP("Setting to 1 = Enable the process. I~IV one by one.", "设为1表示使用相应过程，I~IV依次接力。")
+	// 	CATEGORY("Process", "过程")
+	// > = int4(1,1,1,1);
+
+	uniform bool bUseCh1<
+		LABEL("Enable Proc I", "启用过程I")
+		CATEGORY("Process I (Cyan Line)", "过程I（青色线）")
+		ui_category_toggle = true;
+	> = true;
 
     uniform int iCh1_In<
         LABEL("Select Input", "输入选择")
@@ -109,6 +115,12 @@ namespace XChannelCurve {
 		CATEGORY("Process I (Cyan Line)", "过程I（青色线）")
 		ui_min = 0.0; ui_max = 1.0; ui_step = 0.001;
 	> = float2(1, 0.5);
+
+	uniform bool bUseCh2<
+		LABEL("Enable Proc II", "启用过程II")
+		CATEGORY("Process II (Magenta Line)", "过程II（品红线）")
+		ui_category_toggle = true;
+	> = true;
 
 	uniform int iCh2_InSrc<
 		LABEL("Image Source", "图像源")
@@ -203,6 +215,12 @@ namespace XChannelCurve {
 		ui_min = 0.0; ui_max = 1.0; ui_step = 0.001;
 	> = float2(1, 0.5);
 
+	uniform bool bUseCh3<
+		LABEL("Enable Proc III", "启用过程III")
+		CATEGORY("Process III (Yellow Line)", "过程 III（黄色线）")
+		ui_category_toggle = true;
+	> = true;
+
 	uniform int iCh3_InSrc<
 		LABEL("Image Source", "图像源")
 		ui_type = "combo";
@@ -295,6 +313,12 @@ namespace XChannelCurve {
 		CATEGORY("Process III (Yellow Line)", "过程 III（黄色线）")
 		ui_min = 0.0; ui_max = 1.0; ui_step = 0.001;
 	> = float2(1, 0.5);
+
+	uniform bool bUseCh4<
+		LABEL("Enable Proc IV", "启用过程IV")
+		CATEGORY("Process IV (Black Line)", "过程 IV（黑色线）")
+		ui_category_toggle = true;
+	> = true;
 
 	uniform int iCh4_InSrc<
 		LABEL("Image Source", "图像源")
@@ -413,7 +437,7 @@ namespace XChannelCurve {
 		ui_type = "slider";
 		CATEGORY("Overlay", "覆盖层")
 		ui_min = 0.0; ui_max = 1.0; ui_step = 0.001;
-	> = float2(0, 0);
+	> = float2(0.5, 0.5);
 
 	uniform int4 iChannel <
 		LABEL("Show Which Curve", "显示哪些曲线")
@@ -434,21 +458,21 @@ namespace XChannelCurve {
 		ui_type = "slider";
 		CATEGORY("Overlay", "覆盖层")
 		ui_min = 256; ui_max = 512;
-	> = 256;
+	> = 512;
 
 	uniform float iPointSize <
 		LABEL("Anchor Size", "锚点尺寸")
 		ui_type = "slider";
 		CATEGORY("Overlay", "覆盖层")
 		ui_min = 1; ui_max = 10;
-	> = 2;
+	> = 4;
 
 	uniform float fCurveThick <
 		LABEL("Line Width", "线宽")
 		ui_type = "slider";
 		CATEGORY("Overlay", "覆盖层")
 		ui_min = 1; ui_max = 10;
-	> = 1;
+	> = 2;
 
 	texture2D texXPointData{
 		Width = 8;
@@ -711,9 +735,12 @@ namespace XChannelCurve {
         int target[4] = {iCh1_Out, iCh2_Out, iCh3_Out, iCh4_Out};
 		int imageSrc[4] = {0, iCh2_InSrc, iCh3_InSrc, iCh4_InSrc};
         float src_val = 0;
+		const int4 iUseChannel = int4(bUseCh1, bUseCh2, bUseCh3, bUseCh4);
         for(int i = 0; i < 4; i++){
-            if(iUseChannel[i] == 0)
-                continue;
+            if(iUseChannel[i] == 0){
+				chRGB[i+1] = chRGB[i];
+				continue;
+			}
             float3 hsv = RGBToHSV(chRGB[imageSrc[i]]);
             switch(source[i]){
                 case 0:

@@ -1,12 +1,14 @@
 // LUT shader loading a custom .cube 1D LUT
-// Requires newest ReShade from GitHub, since the latest official release is still 5.9.2
 // Author: BarricadeMKXX
-// 2023-12-15
+// 2024-01-15
 // License: MIT
 // Credits to Marty McFly's LUT shader!
 
 #include "ReShade.fxh"
 
+#if __RESHADE__ < 60000
+    #error "This ReShade version does not support .cube LUT files. Please update to at least ReShade 6.0.0."
+#else
 uniform int iSample_Mode<
     ui_type = "combo";
     ui_label = "Sampling Mode";
@@ -106,7 +108,7 @@ void PS_CubeLUT1D_Apply(float4 vpos : SV_Position, float2 texcoord : TEXCOORD, o
     res.xyz = color.xyz;
     res.w = 1.0;
 }
-
+#endif
 technique CubeLUT1D<
     ui_label = "Cube LUT 1D";
 >

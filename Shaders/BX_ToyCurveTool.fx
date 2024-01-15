@@ -1,7 +1,7 @@
 // Simple Curve Tool For Fun!
-// version 0.1.0
-// Copyright (c) 2023 BarricadeMKXX
-// License: (To Be Done. Now: All rights reserved.
+// version 0.2.0
+// Copyright (c) 2023-2024 BarricadeMKXX
+// License: MIT
 
 #include "ReShade.fxh"
 #include "ReShadeUI.fxh"
@@ -29,20 +29,25 @@ namespace SimpleCurveTool {
 				  "Besides, this tool is still WIP, and may not behave the same as softwares like Photoshop.";
 	#endif
 	>;
+
+	uniform bool bUseChR<
+		LABEL("Enable: Red", "启用红色通道")
+		CATEGORY("Channel: Red", "红色通道")
+		ui_category_toggle = true;
+	> = false;
+
 	uniform float2 fPointR_0<
 		LABEL("Anchor #0", "锚点#0")
 		ui_type = "slider";
 		CATEGORY("Channel: Red", "红色通道")
 		ui_min = 0.0; ui_max = 1.0; ui_step = 0.001;
 	> = float2(0.0, 0.0);
-
 	uniform float2 fPointR_1<
 		LABEL("Anchor #1", "锚点#1")
 		ui_type = "slider";
 		CATEGORY("Channel: Red", "红色通道")
 		ui_min = 0.0; ui_max = 1.0; ui_step = 0.001;
 	> = float2(-1, -1);
-
 	uniform float2 fPointR_2<
 		LABEL("Anchor #2", "锚点#2")
 		ui_type = "slider";
@@ -80,20 +85,24 @@ namespace SimpleCurveTool {
 		ui_min = 0.0; ui_max = 1.0; ui_step = 0.001;
 	> = float2(1, 1);
 
-		uniform float2 fPointG_0<
+	uniform bool bUseChG<
+		LABEL("Enable: Green", "启用绿色通道")
+		CATEGORY("Channel: Green", "绿色通道")
+		ui_category_toggle = true;
+	> = false;
+
+	uniform float2 fPointG_0<
 		LABEL("Anchor #0", "锚点#0")
 		ui_type = "slider";
 		CATEGORY("Channel: Green", "绿色通道")
 		ui_min = 0.0; ui_max = 1.0; ui_step = 0.001;
 	> = float2(0.0, 0.0);
-
 	uniform float2 fPointG_1<
 		LABEL("Anchor #1", "锚点#1")
 		ui_type = "slider";
 		CATEGORY("Channel: Green", "绿色通道")
 		ui_min = 0.0; ui_max = 1.0; ui_step = 0.001;
 	> = float2(-1, -1);
-
 	uniform float2 fPointG_2<
 		LABEL("Anchor #2", "锚点#2")
 		ui_type = "slider";
@@ -131,20 +140,24 @@ namespace SimpleCurveTool {
 		ui_min = 0.0; ui_max = 1.0; ui_step = 0.001;
 	> = float2(1, 1);
 
+	uniform bool bUseChB<
+		LABEL("Enable: Blue", "启用蓝色通道")
+		CATEGORY("Channel: Blue", "蓝色通道")
+		ui_category_toggle = true;
+	> = false;
+
 	uniform float2 fPointB_0<
 		LABEL("Anchor #0", "锚点#0")
 		ui_type = "slider";
 		CATEGORY("Channel: Blue", "蓝色通道")
 		ui_min = 0.0; ui_max = 1.0; ui_step = 0.001;
 	> = float2(0.0, 0.0);
-
 	uniform float2 fPointB_1<
 		LABEL("Anchor #1", "锚点#1")
 		ui_type = "slider";
 		CATEGORY("Channel: Blue", "蓝色通道")
 		ui_min = 0.0; ui_max = 1.0; ui_step = 0.001;
 	> = float2(-1, -1);
-
 	uniform float2 fPointB_2<
 		LABEL("Anchor #2", "锚点#2")
 		ui_type = "slider";
@@ -182,20 +195,24 @@ namespace SimpleCurveTool {
 		ui_min = 0.0; ui_max = 1.0; ui_step = 0.001;
 	> = float2(1, 1);
 
+	uniform bool bUseChA<
+		LABEL("Enable: RGB", "启用RGB通道")
+		CATEGORY("Channel: RGB All", "RGB通道")
+		ui_category_toggle = true;
+	> = true;
+
 	uniform float2 fPointA_0<
 		LABEL("Anchor #0", "锚点#0")
 		ui_type = "slider";
 		CATEGORY("Channel: RGB All", "RGB通道")
 		ui_min = 0.0; ui_max = 1.0; ui_step = 0.001;
 	> = float2(0.0, 0.0);
-
 	uniform float2 fPointA_1<
 		LABEL("Anchor #1", "锚点#1")
 		ui_type = "slider";
 		CATEGORY("Channel: RGB All", "RGB通道")
 		ui_min = 0.0; ui_max = 1.0; ui_step = 0.001;
 	> = float2(-1, -1);
-
 	uniform float2 fPointA_2<
 		LABEL("Anchor #2", "锚点#2")
 		ui_type = "slider";
@@ -243,7 +260,7 @@ namespace SimpleCurveTool {
 		ui_type = "slider";
 		CATEGORY("Overlay", "覆盖层")
 		ui_min = 0.0; ui_max = 1.0; ui_step = 0.001;
-	> = float2(0, 0);
+	> = float2(0.5, 0.5);
 
 	uniform int4 iChannel <
 		LABEL("Show Which Curve (R/G/B/All)", "显示哪些曲线（R/G/B/All）")
@@ -258,21 +275,21 @@ namespace SimpleCurveTool {
 		ui_type = "slider";
 		CATEGORY("Overlay", "覆盖层")
 		ui_min = 256; ui_max = 512;
-	> = 256;
+	> = 512;
 
 	uniform float iPointSize <
 		LABEL("Anchor Size", "锚点尺寸")
 		ui_type = "slider";
 		CATEGORY("Overlay", "覆盖层")
 		ui_min = 1; ui_max = 10;
-	> = 2;
+	> = 4;
 
 	uniform float fCurveThick <
 		LABEL("Line Width", "线宽")
 		ui_type = "slider";
 		CATEGORY("Overlay", "覆盖层")
 		ui_min = 1; ui_max = 10;
-	> = 1;
+	> = 2;
 
 	uniform int3 iShowChannel<
 		LABEL("Show Which Channel (R/G/B)", "显示输出通道(R/G/B)")
@@ -520,16 +537,16 @@ namespace SimpleCurveTool {
 		float2 texelSize = float2(1.0, 1.0) / float2(CURVEWINDOW_SZ, 4);
 		//float2 texelSize = 0.0;
 		float3 curColor = tex2D(ReShade::BackBuffer, texCoord);
-		float3 stage1 = float3(
-			tex2D(sampCurveData, float2(curColor.r, 0) + 0.5*texelSize).x,
-			tex2D(sampCurveData, float2(curColor.g, 0.25) + 0.5*texelSize).x,
-			tex2D(sampCurveData, float2(curColor.b, 0.5) + 0.5*texelSize).x
+		float3 stage1 = float3(			
+			bUseChR ? tex2D(sampCurveData, float2(curColor.r, 0) + 0.5*texelSize).x : curColor.r,
+			bUseChG ? tex2D(sampCurveData, float2(curColor.g, 0.25) + 0.5*texelSize).x : curColor.g,
+			bUseChB ? tex2D(sampCurveData, float2(curColor.b, 0.5) + 0.5*texelSize).x : curColor.b
 		);
-		float3 stage2 = float3(
+		float3 stage2 = bUseChA ? float3(
 			tex2D(sampCurveData, float2(stage1.r, 0.75) + 0.5*texelSize).x,
 			tex2D(sampCurveData, float2(stage1.g, 0.75) + 0.5*texelSize).x,
 			tex2D(sampCurveData, float2(stage1.b, 0.75) + 0.5*texelSize).x
-		);
+		) : stage1;
 		output = float4(stage2 * iShowChannel, 1);
 	}
 
