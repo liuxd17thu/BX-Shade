@@ -1,14 +1,14 @@
 #include "BX_XIV_StaticLayer.fxh"
 
 uniform int mSLayerQuantity <
-    ui_label = "Static Layer Quantity";
+    ui_label = "静态图层数量";
     ui_type = "combo";
     ui_items = " 1\0 2\0 3\0 4\0 5\0";
     ui_bind = "SLayer_Quantity";
 > = 0;
 
 uniform float fDotSize <
-    ui_label = "Dot Size";
+    ui_label = "控制点尺寸";
     ui_type = "slider";
     ui_min = 2.0; ui_max = 20.0; ui_step = 1.0;
 > = 5.0f;
