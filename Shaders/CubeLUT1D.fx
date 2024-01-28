@@ -8,7 +8,7 @@
 
 #if __RESHADE__ < 60000
     #error "This ReShade version does not support .cube LUT files. Please update to at least ReShade 6.0.0."
-#else
+#endif
 uniform int iSample_Mode<
     ui_type = "combo";
     ui_label = "Sampling Mode";
@@ -108,7 +108,7 @@ void PS_CubeLUT1D_Apply(float4 vpos : SV_Position, float2 texcoord : TEXCOORD, o
     res.xyz = color.xyz;
     res.w = 1.0;
 }
-#endif
+
 technique CubeLUT1D<
     ui_label = "Cube LUT 1D";
 >
