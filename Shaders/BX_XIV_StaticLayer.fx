@@ -22,7 +22,7 @@ uniform float fDotSize <
 #ifndef SLayer1_SizeY
     #define SLayer1_SizeY 1080.0
 #endif
-SLayer_SUMMON(1, SLayer1_Name, SLayer1_SizeX, SLayer1_SizeY, "|\n|\n| Static Layer #1")
+SLayer_SUMMON(1, SLayer1_Name, SLayer1_SizeX, SLayer1_SizeY)
 
 #if SLayer_Quantity >= 1
     #if exists("DirtA.png")
@@ -46,7 +46,7 @@ SLayer_SUMMON(1, SLayer1_Name, SLayer1_SizeX, SLayer1_SizeY, "|\n|\n| Static Lay
             #define SLayer2_SizeY 1080.0
         #endif
     #endif
-    SLayer_SUMMON(2, SLayer2_Name, SLayer2_SizeX, SLayer2_SizeY, "|\n|\n| Static Layer #2")
+    SLayer_SUMMON(2, SLayer2_Name, SLayer2_SizeX, SLayer2_SizeY)
 #endif
 
 #if SLayer_Quantity >= 2
@@ -71,7 +71,7 @@ SLayer_SUMMON(1, SLayer1_Name, SLayer1_SizeX, SLayer1_SizeY, "|\n|\n| Static Lay
             #define SLayer3_SizeY 1080.0
         #endif
     #endif
-    SLayer_SUMMON(3, SLayer3_Name, SLayer3_SizeX, SLayer3_SizeY, "|\n|\n| Static Layer #3\n")
+    SLayer_SUMMON(3, SLayer3_Name, SLayer3_SizeX, SLayer3_SizeY)
 #endif
 
 #if SLayer_Quantity >= 3
@@ -96,7 +96,7 @@ SLayer_SUMMON(1, SLayer1_Name, SLayer1_SizeX, SLayer1_SizeY, "|\n|\n| Static Lay
             #define SLayer4_SizeY 1080.0
         #endif
     #endif
-    SLayer_SUMMON(4, SLayer4_Name, SLayer4_SizeX, SLayer4_SizeY, "|\n|\n| Static Layer #4\n")
+    SLayer_SUMMON(4, SLayer4_Name, SLayer4_SizeX, SLayer4_SizeY)
 #endif
 
 #if SLayer_Quantity >= 4
@@ -121,5 +121,5 @@ SLayer_SUMMON(1, SLayer1_Name, SLayer1_SizeX, SLayer1_SizeY, "|\n|\n| Static Lay
             #define SLayer5_SizeY 1080.0
         #endif
     #endif
-    SLayer_SUMMON(5, SLayer5_Name, SLayer5_SizeX, SLayer5_SizeY, "|\n|\n| \nStatic Layer #5")
+    SLayer_SUMMON(5, SLayer5_Name, SLayer5_SizeX, SLayer5_SizeY)
 #endif

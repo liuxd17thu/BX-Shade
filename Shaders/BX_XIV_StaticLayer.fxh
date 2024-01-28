@@ -32,6 +32,8 @@
     #define SLayer_Quantity 0
 #endif
 
+#define SLayer_Category "|\n|\n| Static Layer #"
+
 #if SLayer_Quantity_MAX < SLayer_Quantity
     #error "Too many Static Layers!"
 #endif
@@ -127,69 +129,69 @@ float3 GetWSPlaneProjFromUV(const float3 PlaneBase, const float3 PlaneNormal, co
 #define _STR(x) #x
 #define STR(x) _STR(x)
 
-#define SLayer_SUMMON(ID, SLayer_Name, SLayer_SizeX, SLayer_SizeY, SLayer_Category) \
+#define SLayer_SUMMON(ID, SLayer_Name, SLayer_SizeX, SLayer_SizeY) \
 uniform int CAT(iLayerID_, ID)< \
     ui_label = "Lock Status"; \
     ui_type = "combo"; \
     ui_items = "Lock Pos & Dir\0Lock Pos\0Unlock\0"; \
-    ui_category = SLayer_Category; \
+    ui_category = SLayer_Category STR(ID); \
 > = 2; \
 \
 uniform float2 CAT(fLayerBaseXY_, ID)< \
     ui_label = "Base Point | XY"; \
     ui_type = "slider"; \
     ui_min = 0; ui_max = 1; \
-    ui_category = SLayer_Category; \
+    ui_category = SLayer_Category STR(ID); \
 > = float2(0.5f, 0.5f); \
 \
 uniform bool CAT(bDepth_, ID)< \
     ui_label = "Get Depth of Scene Objects"; \
-    ui_category = SLayer_Category; \
+    ui_category = SLayer_Category STR(ID); \
 > = false; \
 \
 uniform float CAT(fLayerBaseZ_, ID)< \
     ui_label = "Base Point | Z"; \
     ui_type = "slider"; \
     ui_min = 0.02; ui_max = 1; ui_step = 0.000001; \
-    ui_category = SLayer_Category; \
+    ui_category = SLayer_Category STR(ID); \
 > = 0.1f; \
 \
 uniform bool CAT(bInfinite_, ID)< \
     ui_label = "Infinite"; \
-    ui_category = SLayer_Category; \
+    ui_category = SLayer_Category STR(ID); \
 > = false; \
 \
 uniform float2 CAT(fUVOffset_, ID)< \
     ui_label = "UV Offset"; \
     ui_type = "drag"; \
     ui_step = 0.01; \
-    ui_category = SLayer_Category; \
+    ui_category = SLayer_Category STR(ID); \
 > = float2(0.0f, 0.0f); \
 \
 uniform bool CAT(bClamp_, ID)< \
     ui_label = "Clamp Border"; \
-    ui_category = SLayer_Category; \
+    ui_category = SLayer_Category STR(ID); \
 > = false; \
 \
 uniform float CAT(fScale_, ID)< \
     ui_label = "Scale H&V"; \
     ui_type = "slider"; \
     ui_min = 0; ui_max = 5; \
-    ui_category = SLayer_Category; \
+    ui_category = SLayer_Category STR(ID); \
 > = 1.0f; \
 \
 uniform float2 CAT(fScaleHV_, ID)< \
     ui_label = "Scale H/V"; \
     ui_type = "slider"; \
     ui_min = 0; ui_max = 5; \
-    ui_category = SLayer_Category; \
+    ui_category = SLayer_Category STR(ID); \
 > = float2(1.0f, 1.0f); \
 \
 uniform float CAT(fOpacity_, ID)< \
     ui_label = "Opacity"; \
     ui_type = "slider"; \
     ui_min = 0; ui_max = 1; \
-    ui_category = SLayer_Category; \
+    ui_category = SLayer_Category STR(ID); \
 > = 1.0f; \
 \
 uniform float3 CAT(fRotDeg_, ID)< \
@@ -197,7 +199,7 @@ uniform float3 CAT(fRotDeg_, ID)< \
     ui_type = "slider"; \
     ui_min = -180; ui_max = 180; ui_step = 0.1; \
     ui_units = "°"; \
-    ui_category = SLayer_Category; \
+    ui_category = SLayer_Category STR(ID); \
 > = float3(0, 0, 0); \
 \
 uniform bool CAT(bPanel_, ID) < source = "overlay_open"; >; \
