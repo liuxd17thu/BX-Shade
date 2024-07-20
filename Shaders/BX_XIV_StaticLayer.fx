@@ -4,13 +4,13 @@
 
 include "BX_XIV_StaticLayer.fxh"
 
-#define General_Category0 "| General Settings\n"
+#define General_Category0 "| 一般设置\n"
 #if RESHADE_DEPTH_INPUT_IS_REVERSED != 0
-    #define General_Category1 "| FFXIV Version: DAWNTRAIL\n| DEPTH: Reversed/ RESHADE_DEPTH_INPUT_IS_REVERSED = 1\n"
+    #define General_Category1 "| 游戏版本：金曦\n| 深度设置：反转深度/ RESHADE_DEPTH_INPUT_IS_REVERSED = 1\n"
 #else
-    #define General_Category1 "| FFXIV Version: ENDWALKER\n| DEPTH: Normal/ RESHADE_DEPTH_INPUT_IS_REVERSED = 0\n"
+    #define General_Category1 "| 游戏版本：晓月\n| 深度设置：普通深度/ RESHADE_DEPTH_INPUT_IS_REVERSED = 0\n"
 #endif
-#define General_Category2 "If the information above does not match the game, please modify the global preprocessor RESHADE_DEPTH_INPUT_IS_REVERSED: Endwalker should be 0, Dawntrail should be 1."
+#define General_Category2 "若以上内容与游戏不匹配，请手动修改全局预处理器定义中的 RESHADE_DEPTH_INPUT_IS_REVERSED，晓月为0，金曦为1。"
 
 uniform int bInverse<
     ui_type = "radio";
@@ -21,14 +21,14 @@ uniform int bInverse<
 > = RESHADE_DEPTH_INPUT_IS_REVERSED;
 
 uniform float fSkyDepth<
-    ui_label = "Sky Depth";
+    ui_label = "天空阈值";
     ui_type = "slider";
     ui_min = 0.0f; ui_max = 1.0f; ui_step = 0.0001;
     ui_category = General_Category0 General_Category1;
 > = 0.999f;
 
 uniform int mSLayerQuantity <
-    ui_label = "Static Layer Quantity";
+    ui_label = "静态图层数量";
     ui_type = "combo";
     ui_items = " 1\0 2\0 3\0 4\0 5\0";
     ui_bind = "SLayer_Quantity";
@@ -36,7 +36,7 @@ uniform int mSLayerQuantity <
 > = 0;
 
 uniform float fDotSize <
-    ui_label = "Dot Size";
+    ui_label = "控制点尺寸";
     ui_type = "slider";
     ui_min = 2.0; ui_max = 20.0; ui_step = 1.0;
     ui_category = General_Category0 General_Category1;

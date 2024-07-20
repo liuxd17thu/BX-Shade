@@ -9,7 +9,7 @@
 #endif
 
 uniform bool bShowZ<
-    ui_label = "Show Fake Z Buffer";
+    ui_label = "显示伪Z轴缓冲区";
 > = false;
 
 void InitialZ(in float4 pos : SV_POSITION, in float2 texcoords : TEXCOORD, out float4 col : SV_TARGET0, out float z : SV_TARGET1)
@@ -37,7 +37,10 @@ float4 PrintZ(in float4 pos : SV_POSITION, in float2 texcoords : TEXCOORD) : SV_
     return color;
 }
 
-technique BX_XIV_StaticLayer_Begin
+technique BX_XIV_StaticLayer_Begin<
+    ui_label = "=== BX::XIV::静态图层|起始[BX_XIV_StaticLayer_Begin]";
+    ui_tooltip = "使用起始和终止两个着色器包裹所有静态图层，不要插入其他着色器。";
+>
 {
     pass{
         VertexShader = PostProcessVS;
@@ -47,7 +50,10 @@ technique BX_XIV_StaticLayer_Begin
     }
 }
 
-technique BX_XIV_StaticLayer_End
+technique BX_XIV_StaticLayer_End<
+    ui_label = "=== BX::XIV::静态图层|终止[BX_XIV_StaticLayer_End]";
+    ui_tooltip = "使用起始和终止两个着色器包裹所有静态图层，不要插入其他着色器。";
+>
 {
     pass{
         VertexShader = PostProcessVS;

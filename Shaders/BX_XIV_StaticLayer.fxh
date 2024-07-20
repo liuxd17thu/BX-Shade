@@ -6,10 +6,10 @@
     #if exists "ffxiv_common.fxh"
         #include "ffxiv_common.fxh"
     #else
-        #error "XIV_StaticLayer needs REST addon and ffxiv_common.fxh to work correctly."
+        #error "BX::XIV::静态图层 依赖于REST插件以及ffxiv_common.fxh运行。"
     #endif
 #else
-    #error "XIV_StaticLayer can only work with REST addon in Final Fantasy XIV (DX11)."
+    #error "BX::XIV::静态图层 依赖于REST插件，且目前只能用于《最终幻想14》（DX11）。"
 #endif
 
 #define DEG_OF_PI 57.2957795
@@ -33,10 +33,10 @@
     #define SLayer_Quantity 0
 #endif
 
-#define SLayer_Category "|\n|\n| Static Layer #"
+#define SLayer_Category "|\n|\n| 静态图层 #"
 
 #if SLayer_Quantity_MAX < SLayer_Quantity
-    #error "Too many Static Layers!"
+    #error "静态图层过多！"
 #endif
 
 namespace BXCommon{
@@ -128,71 +128,71 @@ float DecodeDepth(float z)
 
 #define SLayer_SUMMON(ID, SLayer_Name, SLayer_SizeX, SLayer_SizeY) \
 uniform int CAT(iLayerID_, ID)< \
-    ui_label = "Lock Status"; \
+    ui_label = "锁止状态"; \
     ui_type = "combo"; \
-    ui_items = "Lock Pos & Dir\0Lock Pos\0Unlock\0"; \
+    ui_items = "位置+朝向\0仅位置\0解锁\0"; \
     ui_category = SLayer_Category STR(ID); \
 > = 2; \
 \
 uniform float2 CAT(fLayerBaseXY_, ID)< \
-    ui_label = "Base Point | XY"; \
+    ui_label = "基点 | 屏幕XY"; \
     ui_type = "slider"; \
     ui_min = 0; ui_max = 1; \
     ui_category = SLayer_Category STR(ID); \
 > = float2(0.5f, 0.5f); \
 \
 uniform bool CAT(bDepth_, ID)< \
-    ui_label = "Get Depth of Scene Objects"; \
+    ui_label = "使用物体处的Z值"; \
     ui_category = SLayer_Category STR(ID); \
 > = false; \
 \
 uniform float CAT(fLayerBaseZ_, ID)< \
-    ui_label = "Base Point | Z"; \
+    ui_label = "基点 | 屏幕Z - 手动"; \
     ui_type = "slider"; \
-    ui_min = 0.02; ui_max = 1; ui_step = 0.000001; \
+    ui_min = 0.02; ui_max = 1; ui_step = 0.0001; \
     ui_category = SLayer_Category STR(ID); \
 > = 0.1f; \
 \
 uniform float3 CAT(fBaseOffset_, ID)< \
-    ui_label = "Base Point | Worldspace Offset"; \
+    ui_label = "基点 | 世界XYZ偏移"; \
     ui_type = "drag"; \
     ui_step = 0.01; \
     ui_category = SLayer_Category STR(ID); \
 > = float3(0, 0, 0); \
 \
 uniform bool CAT(bInfinite_, ID)< \
-    ui_label = "Infinite"; \
+    ui_label = "无限延展"; \
     ui_category = SLayer_Category STR(ID); \
 > = false; \
 \
 uniform float2 CAT(fUVOffset_, ID)< \
-    ui_label = "UV Offset"; \
+    ui_label = "图层偏移"; \
     ui_type = "drag"; \
     ui_step = 0.01; \
     ui_category = SLayer_Category STR(ID); \
 > = float2(0.0f, 0.0f); \
 \
 uniform bool CAT(bClamp_, ID)< \
-    ui_label = "Clamp Border"; \
+    ui_label = "边界钳位"; \
     ui_category = SLayer_Category STR(ID); \
 > = false; \
 \
 uniform float CAT(fScale_, ID)< \
-    ui_label = "Scale H&V"; \
+    ui_label = "缩放 | 总体"; \
     ui_type = "slider"; \
     ui_min = 0; ui_max = 5; \
     ui_category = SLayer_Category STR(ID); \
 > = 1.0f; \
 \
 uniform float2 CAT(fScaleHV_, ID)< \
-    ui_label = "Scale H/V"; \
+    ui_label = "缩放 | 水平/垂直"; \
     ui_type = "slider"; \
     ui_min = 0; ui_max = 5; \
     ui_category = SLayer_Category STR(ID); \
 > = float2(1.0f, 1.0f); \
 \
 uniform float CAT(fOpacity_, ID)< \
-    ui_label = "Opacity"; \
+    ui_label = "不透明度 ! 不建议使用"; \
     ui_type = "slider"; \
     ui_min = 0; ui_max = 1; \
     ui_category = SLayer_Category STR(ID); \
@@ -201,7 +201,7 @@ uniform float CAT(fOpacity_, ID)< \
 static bool CAT(bNormalDir_, ID) = false; \
 \
 uniform float3 CAT(fRotDeg_, ID)< \
-    ui_label = "Rotate"; \
+    ui_label = "旋转"; \
     ui_type = "slider"; \
     ui_min = -180; ui_max = 180; ui_step = 0.1; \
     ui_units = "°"; \
@@ -365,7 +365,10 @@ void CAT(DrawPS_, ID)(float4 position : SV_POSITION, float2 texcoord : TEXCOORD,
     } \
 } \
 \
-technique CAT(BX_XIV_StaticLayer, ID) \
+technique CAT(BX_XIV_StaticLayer, ID)< \
+    ui_label = "BX::XIV::静态图层"STR(ID)"[BX_XIV_StaticLayer"STR(ID)"]"; \
+    ui_tooltip = "StageDepth的升级版，在游戏场景空间放置自定义图像并锁定。"; \
+> \
 { \
     pass pSetLayerPos{ \
         ComputeShader = CAT(SetLayerPosCS_, ID)<1, 1>; \

@@ -7,44 +7,61 @@
 #include "ReShade.fxh"
 
 #if __RESHADE__ < 60000
-    #error "This ReShade version does not support .cube LUT files. Please update to at least ReShade 6.0.0."
+    #error "该ReShade版本不支持.cube格式的LUT文件，请升级到ReShade 6.0.0或以上。"
 #endif
+
+uniform int __GUIDE<
+    ui_type = "radio";
+    ui_label = " ";
+    ui_category = "3D Cube LUT导入说明";
+    ui_text =   "！该着色器专用于加载3D的cube文件，1D LUT请使用CubeLUT1D.fx！\n"
+                "导入自定义cube文件：\n"
+                "1. 将cube文件置于ReShade的纹理搜索路径下，通常为 \"前面一堆/reshade-shaders/Textures/\"\n"
+                "2. 在 SOURCE_CUBELUT1D_FILE 处填入该文件的文件名\n"
+                "3. 在 CUBE_3D_SIZE 处填入该cube文件的尺寸，通常是16/17/32/33/64/65之一\n"
+                "3? 但如果你不确定：\n"
+                "  使用记事本等工具打开cube文件，开头几行中找到LUT_3D_SIZE，其后的数字就是尺寸值\n"
+                "  数值错误会导致画面立刻黑屏！\n"
+    ;
+    ui_category_closed = true;
+>;
+
 uniform int iSample_Mode<
     ui_type = "combo";
-    ui_label = "Sampling Mode";
-    ui_items = "ReShade Internal\0Trilinear\0Tetrahedral\0";
+    ui_label = "采样模式";
+    ui_items = "ReShade内置\0三线性\0四面体\0";
 > = 1;
 
 uniform float fLUT_Intensity <
     ui_type = "slider";
     ui_min = 0.00; ui_max = 1.00;
-    ui_label = "LUT Intensity";
-    ui_tooltip = "Overall intensity of the LUT effect.";
+    ui_label = "LUT强度";
+    ui_tooltip = "LUT效果的总体强度";
 > = 1.00;
 
 uniform float fLUT_AmountChroma <
 	ui_type = "slider";
 	ui_min = 0.00; ui_max = 1.00;
-	ui_label = "LUT Chroma Amount";
-	ui_tooltip = "Intensity of color/chroma change of the LUT.";
+    ui_label = "LUT色度数量";
+    ui_tooltip = "LUT改变颜色的强度。";
 > = 1.00;
 
 uniform float fLUT_AmountLuma <
 	ui_type = "slider";
 	ui_min = 0.00; ui_max = 1.00;
-	ui_label = "LUT Luma Amount";
-	ui_tooltip = "Intensity of luma change of the LUT.";
+    ui_label = "LUT亮度数量";
+    ui_tooltip = "LUT中改变亮度的强度。";
 > = 1.00;
 
-#ifndef SOURCE_CUBELUT3D_FILE
-    #define SOURCE_CUBELUT3D_FILE "Neutral33-3D.cube"
+#ifndef SOURCE_CUBELUT_FILE
+    #define SOURCE_CUBELUT_FILE "Neutral33-3D.cube"
 #endif
 
 #ifndef CUBE_3D_SIZE
     #define CUBE_3D_SIZE 33
 #endif
 
-texture3D texCube3D < source = SOURCE_CUBELUT3D_FILE; >
+texture3D texCube3D < source = SOURCE_CUBELUT_FILE; >
 {
     Width = CUBE_3D_SIZE;
     Height = CUBE_3D_SIZE;
@@ -141,7 +158,7 @@ void PS_CubeLUT3D_Apply(float4 vpos : SV_Position, float2 texcoord : TEXCOORD, o
 }
 
 technique CubeLUT3D<
-    ui_label = "Cube LUT 3D";
+    ui_label = "立方LUT-3D[CubeLUT3D]";
 >
 {
     pass
