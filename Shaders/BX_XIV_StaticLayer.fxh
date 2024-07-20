@@ -1,5 +1,6 @@
-#include "ReShade.fxh"
-#include "ffxiv_common.fxh"
+// Author: BarricadeMKXX
+// 2024-07-20
+// License: MIT
 
 #if __APPLICATION__ == 0x6f24790f
     #if exists "ffxiv_common.fxh"
@@ -66,38 +67,14 @@ namespace BXCommon{
 
 float GetDepth(float2 texcoord)
 {
-#if RESHADE_DEPTH_INPUT_IS_UPSIDE_DOWN
-    texcoord.y = 1.0 - texcoord.y;
-#endif
-    texcoord.x /= RESHADE_DEPTH_INPUT_X_SCALE;
-    texcoord.y /= RESHADE_DEPTH_INPUT_Y_SCALE;
-#if RESHADE_DEPTH_INPUT_X_PIXEL_OFFSET
-    texcoord.x -= RESHADE_DEPTH_INPUT_X_PIXEL_OFFSET * BUFFER_RCP_WIDTH;
-#else // Do not check RESHADE_DEPTH_INPUT_X_OFFSET, since it may be a decimal number, which the preprocessor cannot handle
-    texcoord.x -= RESHADE_DEPTH_INPUT_X_OFFSET / 2.000000001;
-#endif
-#if RESHADE_DEPTH_INPUT_Y_PIXEL_OFFSET
-    texcoord.y += RESHADE_DEPTH_INPUT_Y_PIXEL_OFFSET * BUFFER_RCP_HEIGHT;
-#else
-    texcoord.y += RESHADE_DEPTH_INPUT_Y_OFFSET / 2.000000001;
-#endif
-    float depth = tex2Dlod(BXCommon::sampBXFakeZ, float4(texcoord, 0, 0)).x * RESHADE_DEPTH_MULTIPLIER;
-
-#if RESHADE_DEPTH_INPUT_IS_LOGARITHMIC
-    const float C = 0.01;
-    depth = (exp(depth * log(C + 1.0)) - 1.0) / C;
-#endif
-#if RESHADE_DEPTH_INPUT_IS_REVERSED
-    depth = 1.0 - depth;
-#endif
-    return depth;
+    return tex2Dlod(BXCommon::sampBXFakeZ, float4(texcoord, 0, 0)).x;
 }
 float LinearizeDepth(float x)
 {
 	x /= RESHADE_DEPTH_LINEARIZATION_FAR_PLANE - x * (RESHADE_DEPTH_LINEARIZATION_FAR_PLANE - 1.0);
     return x;
 }
-float DeLinearizeDepth(float x)
+float DelinearizeDepth(float x)
 {
     return (x * RESHADE_DEPTH_LINEARIZATION_FAR_PLANE) / (1.0 + x * (RESHADE_DEPTH_LINEARIZATION_FAR_PLANE - 1.0));
 }
@@ -106,21 +83,41 @@ float3 RotateVec(float3 V, float3 Axis, float rotateRad)
     float3 Vrot = V * cos(rotateRad) + cross(Axis, V) * sin(rotateRad) + Axis * dot(Axis, V) * (1 - cos(rotateRad));
     return Vrot;
 }
-float CheckOutOfBoundInWorldSpace(float3 A)
-{
-    return dot(A - FFXIV::camPos, FFXIV::camDir);
-}
+// float CheckOutOfBoundInWorldSpace(float3 A)
+// {
+//     return dot(A - FFXIV::get_world_position_from_uv(float2(0.5, 0.5), 1), FFXIV::camDir());
+// }
 float CheckDepthInWorldSpace(float3 A, float3 B)
 {
-    return dot(A - B, FFXIV::camDir);
+#if RESHADE_DEPTH_INPUT_IS_REVERSED != 0
+    return FFXIV::get_uv_from_world_position(A).z - FFXIV::get_uv_from_world_position(B).z;
+#else
+     return FFXIV::get_uv_from_world_position(B).z - FFXIV::get_uv_from_world_position(A).z;
+#endif
 }
 float3 GetWSPlaneProjFromUV(const float3 PlaneBase, const float3 PlaneNormal, const float2 TexCoord)
 {
     float3 wsD1 = FFXIV::get_world_position_from_uv(TexCoord.xy, 1);
-    float3 wsD0 = FFXIV::camPos;
+    float3 wsD0 = FFXIV::camPos();
     float3 wsD = normalize(wsD0 - wsD1);
     float3 wsBD0 = wsD0 - PlaneBase;
     return wsD0 - wsD * dot(wsBD0, PlaneNormal) / dot(wsD, PlaneNormal);
+}
+float EncodeDepth(float z)
+{
+#if RESHADE_DEPTH_INPUT_IS_REVERSED != 0
+    return DelinearizeDepth(1.0 - z);
+#else
+    return LinearizeDepth(z);
+#endif
+}
+float DecodeDepth(float z)
+{
+#if RESHADE_DEPTH_INPUT_IS_REVERSED != 0
+    return LinearizeDepth(1.0 - z);
+#else
+    return DelinearizeDepth(z);
+#endif
 }
 
 #define _CAT(x,y) x ## y
@@ -236,16 +233,16 @@ sampler CAT(sampSLZ_, ID){ Texture = CAT(texSL1Z_, ID); }; \
 \
 void CAT(SetLayerPosCS_, ID)(uint3 id : SV_DispatchThreadID) \
 { \
-    float depth = CAT(bDepth_, ID) ? GetDepth(CAT(fLayerBaseXY_, ID)) : DeLinearizeDepth(CAT(fLayerBaseZ_, ID)); \
+    float depth = CAT(bDepth_, ID) ? GetDepth(CAT(fLayerBaseXY_, ID)) : DecodeDepth(CAT(fLayerBaseZ_, ID)); \
     float3 prevBasePoint = tex2Dfetch(BXCommon::wWorldBase, int2(ID-1, LAYOUT_WS_BP)).xyz; \
     float3 basePoint = CAT(iLayerID_, ID) == UNLOCK ? FFXIV::get_world_position_from_uv(CAT(fLayerBaseXY_, ID), depth).xyz : prevBasePoint; \
     float2 pixelSize = BUFFER_PIXEL_SIZE; \
     float2 scaleXY; \
     scaleXY = 0.5 * float2(SLayer_SizeX * pixelSize.x, SLayer_SizeY * pixelSize.y); \
 \
-    float3 wsCenter = FFXIV::get_world_position_from_uv(float2(0.5, 0.5), DeLinearizeDepth(0.1)); \
-    scaleXY.x = length(FFXIV::get_world_position_from_uv(0.5 + float2(scaleXY.x, 0), DeLinearizeDepth(0.1)) - wsCenter); \
-    scaleXY.y = length(FFXIV::get_world_position_from_uv(0.5 + float2(0, scaleXY.y), DeLinearizeDepth(0.1)) - wsCenter); \
+    float3 wsCenter = FFXIV::get_world_position_from_uv(float2(0.5, 0.5), DecodeDepth(0.1)); \
+    scaleXY.x = length(FFXIV::get_world_position_from_uv(0.5 + float2(scaleXY.x, 0), DecodeDepth(0.1)) - wsCenter); \
+    scaleXY.y = length(FFXIV::get_world_position_from_uv(0.5 + float2(0, scaleXY.y), DecodeDepth(0.1)) - wsCenter); \
     scaleXY *= CAT(fScale_, ID) * CAT(fScaleHV_, ID).xy; \
 \
     float3 fRotRad = (CAT(fRotDeg_, ID) / DEG_OF_PI).zxy; \
@@ -310,10 +307,10 @@ void CAT(DrawPS_, ID)(float4 position : SV_POSITION, float2 texcoord : TEXCOORD,
             layerColor = tex2D(CAT(sampSLayerCTex_, ID), float2(0.5, 0.5) + PlaneUV * 0.5);\
         else \
             layerColor = tex2D(CAT(sampSLayerTex_, ID), float2(0.5, 0.5) + PlaneUV * 0.5); \
-        if(CheckOutOfBoundInWorldSpace(wsProj) < 0) \
+        if(FFXIV::get_uv_from_world_position(wsProj).z > 0 && FFXIV::get_uv_from_world_position(wsProj).z < 1) \
         { \
             float depth_check = CheckDepthInWorldSpace(wsPixel, wsProj); \
-            if(depth_check < 0) \
+            if(depth_check < 0 || (bInverse ? 1.0 - GetDepth(texcoord.xy) : GetDepth(texcoord.xy)) >= DelinearizeDepth(fSkyDepth)) \
             { \
                 col.rgb = lerp(col.rgb, layerColor.rgb, layerColor.a * CAT(fOpacity_, ID)); \
                 col.a = 1.0; \

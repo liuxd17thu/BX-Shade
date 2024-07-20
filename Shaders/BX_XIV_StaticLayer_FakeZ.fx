@@ -1,3 +1,7 @@
+// Author: BarricadeMKXX
+// 2024-07-20
+// License: MIT
+
 #include "BX_XIV_StaticLayer.fxh"
 
 #ifdef SLayer_Quantity
@@ -20,7 +24,11 @@ float4 PrintZ(in float4 pos : SV_POSITION, in float2 texcoords : TEXCOORD) : SV_
 {
     float4 color;
     if(bShowZ){
+#if RESHADE_DEPTH_INPUT_IS_REVERSED != 0
+        color.xyz = FFXIV::linearize_depth(1.0 - tex2D(BXCommon::sampBXFakeZ, texcoords).x).xxx;
+#else
         color.xyz = LinearizeDepth(tex2D(BXCommon::sampBXFakeZ, texcoords).x).xxx;
+#endif
         color.w = 1;
     }
     else{

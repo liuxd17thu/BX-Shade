@@ -2,7 +2,7 @@
 #define LANG_zh_cn 1
 
 #ifndef LANGUAGE
-	#define LANGUAGE LANG_en
+	#define LANGUAGE LANG_zh_cn
 #endif
 
 #if !defined(LANGUAGE) || LANGUAGE == LANG_en
@@ -11,6 +11,14 @@
 	#define LABEL(en, zh_cn) ui_label = zh_cn;
 #else
 	#define LABEL(en, zh_cn) ui_label = en;
+#endif
+
+#if !defined(LANGUAGE) || LANGUAGE == LANG_en
+	#define TEXT(en, zh_cn) ui_text = en;
+#elif LANGUAGE == LANG_zh_cn
+	#define TEXT(en, zh_cn) ui_text = zh_cn;
+#else
+	#define TEXT(en, zh_cn) ui_text = en;
 #endif
 
 #if !defined(LANGUAGE) || LANGUAGE == LANG_en
