@@ -1,9 +1,8 @@
 // Author: BarricadeMKXX
-// 2023-09-17
-// Working in progress
-// License: TBD
+// 2024-07-20
+// License: MIT
 
-#include "Reshade.fxh"
+// #include "Reshade.fxh"
 #if __APPLICATION__ == 0x6f24790f
     #if exists "ffxiv_common.fxh"
         #include "ffxiv_common.fxh"
@@ -214,7 +213,7 @@ float4 DrawChromakey(float4 pos : SV_POSITION, float2 texcoords : TEXCOORD) : SV
     float3 direction = float3(sin(fCKTheta / DEG_OF_PI) * cos(fCKPhi / DEG_OF_PI), -cos(fCKTheta / DEG_OF_PI) * cos(fCKPhi / DEG_OF_PI), -sin(fCKPhi / DEG_OF_PI));
     float3 direction2 = float3(sin(fCK2Theta / DEG_OF_PI) * cos(fCK2Phi / DEG_OF_PI), -cos(fCK2Theta / DEG_OF_PI) * cos(fCK2Phi / DEG_OF_PI), -sin(fCK2Phi / DEG_OF_PI));
 
-    float3 camPos = FFXIV::camPos;
+    // float3 camPos = FFXIV::camPos;
     float3 CKBaseInWorld = tex2Dfetch(sampWorldBase, int2(0,0)).xyz;
     float3 CK2BaseInWorld = tex2Dfetch(sampWorldBase, int2(0,1)).xyz;
     
