@@ -23,9 +23,9 @@
 #define LAYOUT_N_VEC       2
 #define LAYOUT_R_VEC       3
 #define LAYOUT_U_VEC       4
-#define LAYOUT_SS_C_POINT  5
-#define LAYOUT_SS_R_POINT  6
-#define LAYOUT_SS_UP_POINT 7
+#define LAYOUT_WS_C_POINT  5
+#define LAYOUT_WS_R_POINT  6
+#define LAYOUT_WS_UP_POINT 7
 
 #define SLayer_Quantity_MAX 4
 
@@ -153,6 +153,13 @@ uniform float CAT(fLayerBaseZ_, ID)< \
     ui_category = SLayer_Category STR(ID); \
 > = 0.1f; \
 \
+uniform float3 CAT(fBaseOffset_, ID)< \
+    ui_label = "Base Point | Worldspace Offset"; \
+    ui_type = "drag"; \
+    ui_step = 0.01; \
+    ui_category = SLayer_Category STR(ID); \
+> = float3(0, 0, 0); \
+\
 uniform bool CAT(bInfinite_, ID)< \
     ui_label = "Infinite"; \
     ui_category = SLayer_Category STR(ID); \
@@ -190,6 +197,8 @@ uniform float CAT(fOpacity_, ID)< \
     ui_min = 0; ui_max = 1; \
     ui_category = SLayer_Category STR(ID); \
 > = 1.0f; \
+\
+static bool CAT(bNormalDir_, ID) = false; \
 \
 uniform float3 CAT(fRotDeg_, ID)< \
     ui_label = "Rotate"; \
@@ -241,22 +250,44 @@ void CAT(SetLayerPosCS_, ID)(uint3 id : SV_DispatchThreadID) \
     scaleXY = 0.5 * float2(SLayer_SizeX * pixelSize.x, SLayer_SizeY * pixelSize.y); \
 \
     float3 wsCenter = FFXIV::get_world_position_from_uv(float2(0.5, 0.5), DecodeDepth(0.1)); \
-    scaleXY.x = length(FFXIV::get_world_position_from_uv(0.5 + float2(scaleXY.x, 0), DecodeDepth(0.1)) - wsCenter); \
-    scaleXY.y = length(FFXIV::get_world_position_from_uv(0.5 + float2(0, scaleXY.y), DecodeDepth(0.1)) - wsCenter); \
-    scaleXY *= CAT(fScale_, ID) * CAT(fScaleHV_, ID).xy; \
+    if(CAT(iLayerID_, ID) == UNLOCK)\
+    { \
+        scaleXY.x = length(FFXIV::get_world_position_from_uv(0.5 + float2(scaleXY.x, 0), DecodeDepth(0.1)) - wsCenter); \
+        scaleXY.y = length(FFXIV::get_world_position_from_uv(0.5 + float2(0, scaleXY.y), DecodeDepth(0.1)) - wsCenter); \
+        scaleXY *= CAT(fScale_, ID) * CAT(fScaleHV_, ID).xy; \
+    } \
+    else \
+    { \
+        scaleXY = tex2Dfetch(BXCommon::wWorldBase, int2(ID-1, LAYOUT_SCALE_XY)).xy; \
+    } \
 \
     float3 fRotRad = (CAT(fRotDeg_, ID) / DEG_OF_PI).zxy; \
     float sAlpha, cAlpha; sincos(fRotRad.x, sAlpha, cAlpha); \
     float sBeta, cBeta; sincos(fRotRad.y, sBeta, cBeta); \
     float sGamma, cGamma; sincos(fRotRad.z, sGamma, cGamma); \
 \
-    float3 normalVec = float3(cAlpha*cGamma, sAlpha*cGamma, sGamma); \
+    float3 normalVec; \
+    if(CAT(bNormalDir_, ID)) \
+    { \
+        if(UNLOCK) \
+        { \
+            float3 pointE = FFXIV::get_world_position_from_uv(CAT(fLayerBaseXY_, ID) + float2(BUFFER_PIXEL_SIZE.x, 0), GetDepth(CAT(fLayerBaseXY_, ID) + float2(BUFFER_PIXEL_SIZE.x, 0))); \
+            float3 pointN = FFXIV::get_world_position_from_uv(CAT(fLayerBaseXY_, ID) + float2(0, BUFFER_PIXEL_SIZE.y), GetDepth(CAT(fLayerBaseXY_, ID) + float2(0, BUFFER_PIXEL_SIZE.y))); \
+            normalVec = normalize(cross(pointE - basePoint, pointN - basePoint)); \
+        } \
+        else \
+            normalVec = normalVec; \
+    } \
+    else \
+        normalVec = float3(cAlpha*cGamma, sAlpha*cGamma, sGamma); \
     float3 rightVec = RotateVec(float3(-sGamma*cAlpha, -sGamma*sAlpha, cGamma), normalVec, fRotRad.y); \
     float3 upVec = RotateVec(float3(sAlpha, -cAlpha, 0), normalVec, fRotRad.y); \
 \
-    float3 ssUpPoint = FFXIV::get_uv_from_world_position(basePoint + scaleXY.y * upVec); \
-    float3 ssRightPoint = FFXIV::get_uv_from_world_position(basePoint + scaleXY.x * rightVec); \
-    float3 ssCenterPoint = FFXIV::get_uv_from_world_position(basePoint.xyz); \
+    float3 wsUpPoint = basePoint + scaleXY.y * upVec; \
+    float3 wsRightPoint = basePoint + scaleXY.x * rightVec; \
+    /* float3 ssUpPoint = FFXIV::get_uv_from_world_position(basePoint + scaleXY.y * upVec); */ \
+    /* float3 ssRightPoint = FFXIV::get_uv_from_world_position(basePoint + scaleXY.x * rightVec);*/ \
+    /* float3 ssCenterPoint = FFXIV::get_uv_from_world_position(basePoint.xyz);*/ \
 \
     if(CAT(iLayerID_, ID) == UNLOCK){ \
         tex2Dstore(BXCommon::wWorldBase, int2(ID-1, LAYOUT_WS_BP      ), float4(basePoint.xyz, CAT(bInfinite_, ID) ? 1 : -1)); \
@@ -266,9 +297,9 @@ void CAT(SetLayerPosCS_, ID)(uint3 id : SV_DispatchThreadID) \
         tex2Dstore(BXCommon::wWorldBase, int2(ID-1, LAYOUT_N_VEC      ), float4(normalVec.xyz, 1)); \
         tex2Dstore(BXCommon::wWorldBase, int2(ID-1, LAYOUT_R_VEC      ), float4(rightVec.xyz, 1)); \
         tex2Dstore(BXCommon::wWorldBase, int2(ID-1, LAYOUT_U_VEC      ), float4(upVec.xyz, 1)); \
-        tex2Dstore(BXCommon::wWorldBase, int2(ID-1, LAYOUT_SS_C_POINT ), float4(ssCenterPoint.xyz, 1)); \
-        tex2Dstore(BXCommon::wWorldBase, int2(ID-1, LAYOUT_SS_R_POINT ), float4(ssRightPoint.xyz, 1)); \
-        tex2Dstore(BXCommon::wWorldBase, int2(ID-1, LAYOUT_SS_UP_POINT), float4(ssUpPoint.xyz, 1)); \
+        tex2Dstore(BXCommon::wWorldBase, int2(ID-1, LAYOUT_WS_C_POINT ), float4(basePoint.xyz, 1)); \
+        tex2Dstore(BXCommon::wWorldBase, int2(ID-1, LAYOUT_WS_R_POINT ), float4(wsRightPoint.xyz, 1)); \
+        tex2Dstore(BXCommon::wWorldBase, int2(ID-1, LAYOUT_WS_UP_POINT), float4(wsUpPoint.xyz, 1)); \
     } \
 } \
 \
@@ -289,13 +320,13 @@ void CAT(DrawPS_, ID)(float4 position : SV_POSITION, float2 texcoord : TEXCOORD,
     float3 ssCenterPoint, ssUpPoint, ssRightPoint; \
 \
     scaleXY         = tex2Dfetch(BXCommon::sampWorldBase, int2(ID-1, LAYOUT_SCALE_XY   )).xyz; \
-    basePoint       = tex2Dfetch(BXCommon::sampWorldBase, int2(ID-1, LAYOUT_WS_BP      )).xyz; \
+    basePoint       = tex2Dfetch(BXCommon::sampWorldBase, int2(ID-1, LAYOUT_WS_BP      )).xyz + CAT(fBaseOffset_, ID); \
     normalVec       = tex2Dfetch(BXCommon::sampWorldBase, int2(ID-1, LAYOUT_N_VEC      )).xyz; \
     rightVec        = tex2Dfetch(BXCommon::sampWorldBase, int2(ID-1, LAYOUT_R_VEC      )).xyz; \
     upVec           = tex2Dfetch(BXCommon::sampWorldBase, int2(ID-1, LAYOUT_U_VEC      )).xyz; \
-    ssCenterPoint   = tex2Dfetch(BXCommon::sampWorldBase, int2(ID-1, LAYOUT_SS_C_POINT )).xyz; \
-    ssUpPoint       = tex2Dfetch(BXCommon::sampWorldBase, int2(ID-1, LAYOUT_SS_R_POINT )).xyz; \
-    ssRightPoint    = tex2Dfetch(BXCommon::sampWorldBase, int2(ID-1, LAYOUT_SS_UP_POINT)).xyz; \
+    ssCenterPoint   = FFXIV::get_uv_from_world_position(basePoint); \
+    ssUpPoint       = FFXIV::get_uv_from_world_position(tex2Dfetch(BXCommon::sampWorldBase, int2(ID-1, LAYOUT_WS_R_POINT )).xyz + CAT(fBaseOffset_, ID)); \
+    ssRightPoint    = FFXIV::get_uv_from_world_position(tex2Dfetch(BXCommon::sampWorldBase, int2(ID-1, LAYOUT_WS_UP_POINT)).xyz + CAT(fBaseOffset_, ID)); \
 \
     float3 wsProj = GetWSPlaneProjFromUV(basePoint, normalVec, texcoord.xy); \
     float2 PlaneUV = float2(dot(wsProj - basePoint, rightVec), dot(wsProj - basePoint, upVec)) / scaleXY - CAT(fUVOffset_, ID); \
