@@ -536,7 +536,7 @@ namespace SimpleCurveTool {
 	void applyCurve(in float4 pos : SV_Position, in float2 texCoord : TEXCOORD, out float4 output : SV_Target) {
 		float2 texelSize = float2(1.0, 1.0) / float2(CURVEWINDOW_SZ, 4);
 		//float2 texelSize = 0.0;
-		float3 curColor = tex2D(ReShade::BackBuffer, texCoord);
+		float3 curColor = tex2D(ReShade::BackBuffer, texCoord).rgb;
 		float3 stage1 = float3(			
 			bUseChR ? tex2D(sampCurveData, float2(curColor.r, 0) + 0.5*texelSize).x : curColor.r,
 			bUseChG ? tex2D(sampCurveData, float2(curColor.g, 0.25) + 0.5*texelSize).x : curColor.g,
