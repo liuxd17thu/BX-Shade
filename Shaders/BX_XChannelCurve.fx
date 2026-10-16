@@ -1,5 +1,5 @@
 // Simple Cross Channel Curve Tool For Fun!
-// version 0.2.0
+// version 0.3.0
 // Copyright (c) 2023-2024 BarricadeMKXX
 // License: MIT
 
@@ -19,15 +19,24 @@ namespace XChannelCurve {
 		ui_text = "每通道的曲线最多添加包含起点终点在内总共8个锚点。\n"
 				  "对于头尾以外的点，可以通过右键重设为默认值(-1,-1)以从曲线上移除。\n"
 				  "请尽量保持曲线锚点横坐标递增，否则本着色器会干预锚点位置。\n"
-				  "纵坐标的调整为加算，而非百分比乘算。0.5对应于中性/不作调整，0对应于减去MAX，1对应于加上MAX。\n"
+				  "每个过程可独立选择加性或乘性；纵坐标0.5始终表示不调整。\n"
+				  "加性：0减去MAX，1加上MAX；乘性：0乘以0，0.5乘以1，1乘以2。\n"
+				  "HSV饱和度/明度与HSL饱和度/亮度为独立通道，两种饱和度数值并不相同。\n"
+				  "HSL亮度是RGB最大与最小分量的中点，不是感知亮度。\n"
+				  "自然增饱和建议使用HSL饱和度输出与乘性；加性仍可能给中性灰染色。\n"
+				  "仅修改HSL饱和度时黑白保持不变；直接修改RGB、明度或亮度不受此保护。\n"
 				  "此外，本工具目前为实验性质，不保证与Krita的跨通道曲线行为一致。";
 	#else
 		ui_text = "Every channel supports up to 8 anchors, including the first and last.\n"
 				  "You can remove anchors by right clicking and resetting to (-1, -1),\n"
-				  "however the first and last anchor cannot be removed."
+				  "however the first and last anchor cannot be removed.\n"
 				  "It's better to keep the x-coord of active anchors increasing.\n"
-				  "The y-coords indicate addition/subtraction to the value.\n"
-				  "0.5 = neutral(no change), 1.0 = +MAX & clamp (e.g. +255 for R/G/B), 0.0 = -MAX & clamp.\n"
+				  "Each process has an Additive or Multiplicative mode; y=0.5 is always neutral.\n"
+				  "Additive: y=0 subtracts MAX, y=1 adds MAX. Multiplicative: y=0/0.5/1 means x0/x1/x2.\n"
+				  "HSV saturation/value and HSL saturation/lightness are separate channels; the two saturations differ.\n"
+				  "HSL lightness is the midpoint of the RGB maximum and minimum, not perceptual brightness.\n"
+				  "For natural saturation boosts, use HSL saturation output with Multiplicative mode; Additive can tint gray.\n"
+				  "Changing only HSL saturation preserves black/white; RGB, value and lightness edits do not have this protection.\n"
 				  "Besides, this tool is still WIP, and may not behave the same as Krita's cross channel curve.";
 	#endif
 	>;
@@ -50,14 +59,32 @@ namespace XChannelCurve {
         LABEL("Select Input", "输入选择")
         ui_type = "combo";
         CATEGORY("Process I (Cyan Line)", "过程I（青色线）")
-        ITEMS("Red\0Green\0Blue\0Hue\0\Saturation\0Value\0", "红色\0绿色\0蓝色\0色相\0饱和度\0明度\0")
+        ITEMS("Red\0Green\0Blue\0Hue\0Saturation (HSV)\0Value (HSV)\0Saturation (HSL)\0Lightness (HSL)\0", "红色\0绿色\0蓝色\0色相\0饱和度（HSV）\0明度（HSV）\0饱和度（HSL）\0亮度（HSL）\0")
     > = 0;
 
     uniform int iCh1_Out<
         LABEL("Select Output", "输出选择")
         ui_type = "combo";
         CATEGORY("Process I (Cyan Line)", "过程I（青色线）")
-        ITEMS("RGB\0Red\0Green\0Blue\0Hue\0\Saturation\0Value\0", "RGB\0红色\0绿色\0蓝色\0色相\0饱和度\0明度\0")
+        ITEMS("RGB\0Red\0Green\0Blue\0Hue\0Saturation (HSV)\0Value (HSV)\0Saturation (HSL)\0Lightness (HSL)\0", "RGB\0红色\0绿色\0蓝色\0色相\0饱和度（HSV）\0明度（HSV）\0饱和度（HSL）\0亮度（HSL）\0")
+    > = 0;
+
+    uniform int iCh1_Mode<
+        LABEL("Curve Mode", "曲线解读方式")
+        ui_type = "combo";
+        CATEGORY("Process I (Cyan Line)", "过程I（青色线）")
+        ITEMS("Additive\0Multiplicative\0", "加性\0乘性\0")
+        TOOLTIP( \
+            "Additive: y=0 subtracts 1, y=0.5 is neutral, y=1 adds 1.\n" \
+            "Multiplicative: y=0 multiplies by 0, y=0.5 by 1, y=1 by 2.\n" \
+            "Values are clamped; hue wraps. Multiplying hue scales its numeric value,\n" \
+            "not a uniform hue rotation, and can introduce a seam in the hue circle." \
+            , \
+            "加性：y=0减去1，y=0.5不调整，y=1加上1。\n" \
+            "乘性：y=0乘以0，y=0.5乘以1，y=1乘以2。\n" \
+            "结果钳位到0~1，色相则循环取余。色相乘性为数值缩放，\n" \
+            "不是统一的色相旋转，可能在色相环接缝处产生不连续。" \
+        )
     > = 0;
 
 	uniform float2 fPoint1_0<
@@ -128,7 +155,7 @@ namespace XChannelCurve {
 		CATEGORY("Process II (Magenta Line)", "过程II（品红线）")
 		TOOLTIP( \
 			"Chose the image source for this process.\n" \
-			"Since modifying RGB/HSV will also affect HSV/RGB, you might need to select a proper\n" \
+			"RGB, HSV and HSL edits affect one another, so you might need to select a proper\n" \
 			"image source to make the adjustment more accurate.\n" \
 			"e.g. If you want to add yellow to areas with higher Value, here's an example setting:\n" \
 			"  Process I:  Select Input = Value, Select Output = Red\n" \
@@ -136,7 +163,7 @@ namespace XChannelCurve {
 			"However, please remember that, a process always adjusts the output of previous process!" \
 			, \
 			"使用哪一阶段图像的颜色数据用作输入。\n" \
-			"由于对RGB/HSV的调整会同步影响HSV/RGB，因此你可能需要调整图像数据源以保证复合调整的准确性。\n" \
+			"RGB、HSV与HSL调整会相互影响，因此你可能需要调整图像数据源以保证复合调整的准确性。\n" \
 			"举例：如果你想在明度较高的区域添加黄色（而非单纯的红或绿），那么可能需要类似下面的设置：\n" \
 			"  过程I：输入选择=明度，输出选择=红色\n" \
 			"  过程II：图像源=原始图像，输入选择=明度，输出选择=绿色\n" \
@@ -149,14 +176,32 @@ namespace XChannelCurve {
         LABEL("Select Input", "输入选择")
         ui_type = "combo";
         CATEGORY("Process II (Magenta Line)", "过程II（品红线）")
-        ITEMS("Red\0Green\0Blue\0Hue\0\Saturation\0Value\0", "红色\0绿色\0蓝色\0色相\0饱和度\0明度\0")
+        ITEMS("Red\0Green\0Blue\0Hue\0Saturation (HSV)\0Value (HSV)\0Saturation (HSL)\0Lightness (HSL)\0", "红色\0绿色\0蓝色\0色相\0饱和度（HSV）\0明度（HSV）\0饱和度（HSL）\0亮度（HSL）\0")
     > = 0;
 
     uniform int iCh2_Out<
         LABEL("Select Output", "输出选择")
         ui_type = "combo";
         CATEGORY("Process II (Magenta Line)", "过程II（品红线）")
-        ITEMS("RGB\0Red\0Green\0Blue\0Hue\0\Saturation\0Value\0", "RGB\0红色\0绿色\0蓝色\0色相\0饱和度\0明度\0")
+        ITEMS("RGB\0Red\0Green\0Blue\0Hue\0Saturation (HSV)\0Value (HSV)\0Saturation (HSL)\0Lightness (HSL)\0", "RGB\0红色\0绿色\0蓝色\0色相\0饱和度（HSV）\0明度（HSV）\0饱和度（HSL）\0亮度（HSL）\0")
+    > = 0;
+
+    uniform int iCh2_Mode<
+        LABEL("Curve Mode", "曲线解读方式")
+        ui_type = "combo";
+        CATEGORY("Process II (Magenta Line)", "过程II（品红线）")
+        ITEMS("Additive\0Multiplicative\0", "加性\0乘性\0")
+        TOOLTIP( \
+            "Additive: y=0 subtracts 1, y=0.5 is neutral, y=1 adds 1.\n" \
+            "Multiplicative: y=0 multiplies by 0, y=0.5 by 1, y=1 by 2.\n" \
+            "Values are clamped; hue wraps. Multiplying hue scales its numeric value,\n" \
+            "not a uniform hue rotation, and can introduce a seam in the hue circle." \
+            , \
+            "加性：y=0减去1，y=0.5不调整，y=1加上1。\n" \
+            "乘性：y=0乘以0，y=0.5乘以1，y=1乘以2。\n" \
+            "结果钳位到0~1，色相则循环取余。色相乘性为数值缩放，\n" \
+            "不是统一的色相旋转，可能在色相环接缝处产生不连续。" \
+        )
     > = 0;
 
 	uniform float2 fPoint2_0<
@@ -227,7 +272,7 @@ namespace XChannelCurve {
 		CATEGORY("Process III (Yellow Line)", "过程 III（黄色线）")
 		TOOLTIP( \
 			"Chose the image source for this process.\n" \
-			"Since modifying RGB/HSV will also affect HSV/RGB, you might need to select a proper\n" \
+			"RGB, HSV and HSL edits affect one another, so you might need to select a proper\n" \
 			"image source to make the adjustment more accurate.\n" \
 			"e.g. If you want to add yellow to areas with higher Value, here's an example setting:\n" \
 			"  Process I:  Select Input = Value, Select Output = Red\n" \
@@ -235,7 +280,7 @@ namespace XChannelCurve {
 			"However, please remember that, a process always adjusts the output of previous process!" \
 			, \
 			"使用哪一阶段图像的颜色数据用作输入。\n" \
-			"由于对RGB/HSV的调整会同步影响HSV/RGB，因此你可能需要调整图像数据源以保证复合调整的准确性。\n" \
+			"RGB、HSV与HSL调整会相互影响，因此你可能需要调整图像数据源以保证复合调整的准确性。\n" \
 			"举例：如果你想在明度较高的区域添加黄色（而非单纯的红或绿），那么可能需要类似下面的设置：\n" \
 			"  过程I：输入选择=明度，输出选择=红色\n" \
 			"  过程II：图像源=原始图像，输入选择=明度，输出选择=绿色\n" \
@@ -248,14 +293,32 @@ namespace XChannelCurve {
         LABEL("Select Input", "输入选择")
         ui_type = "combo";
         CATEGORY("Process III (Yellow Line)", "过程 III（黄色线）")
-        ITEMS("Red\0Green\0Blue\0Hue\0\Saturation\0Value\0", "红色\0绿色\0蓝色\0色相\0饱和度\0明度\0")
+        ITEMS("Red\0Green\0Blue\0Hue\0Saturation (HSV)\0Value (HSV)\0Saturation (HSL)\0Lightness (HSL)\0", "红色\0绿色\0蓝色\0色相\0饱和度（HSV）\0明度（HSV）\0饱和度（HSL）\0亮度（HSL）\0")
     > = 0;
 
     uniform int iCh3_Out<
         LABEL("Select Output", "输出选择")
         ui_type = "combo";
         CATEGORY("Process III (Yellow Line)", "过程 III（黄色线）")
-        ITEMS("RGB\0Red\0Green\0Blue\0Hue\0\Saturation\0Value\0", "RGB\0红色\0绿色\0蓝色\0色相\0饱和度\0明度\0")
+        ITEMS("RGB\0Red\0Green\0Blue\0Hue\0Saturation (HSV)\0Value (HSV)\0Saturation (HSL)\0Lightness (HSL)\0", "RGB\0红色\0绿色\0蓝色\0色相\0饱和度（HSV）\0明度（HSV）\0饱和度（HSL）\0亮度（HSL）\0")
+    > = 0;
+
+    uniform int iCh3_Mode<
+        LABEL("Curve Mode", "曲线解读方式")
+        ui_type = "combo";
+        CATEGORY("Process III (Yellow Line)", "过程 III（黄色线）")
+        ITEMS("Additive\0Multiplicative\0", "加性\0乘性\0")
+        TOOLTIP( \
+            "Additive: y=0 subtracts 1, y=0.5 is neutral, y=1 adds 1.\n" \
+            "Multiplicative: y=0 multiplies by 0, y=0.5 by 1, y=1 by 2.\n" \
+            "Values are clamped; hue wraps. Multiplying hue scales its numeric value,\n" \
+            "not a uniform hue rotation, and can introduce a seam in the hue circle." \
+            , \
+            "加性：y=0减去1，y=0.5不调整，y=1加上1。\n" \
+            "乘性：y=0乘以0，y=0.5乘以1，y=1乘以2。\n" \
+            "结果钳位到0~1，色相则循环取余。色相乘性为数值缩放，\n" \
+            "不是统一的色相旋转，可能在色相环接缝处产生不连续。" \
+        )
     > = 0;
 
 	uniform float2 fPoint3_0<
@@ -326,7 +389,7 @@ namespace XChannelCurve {
 		CATEGORY("Process IV (Black Line)", "过程 IV（黑色线）")
 		TOOLTIP( \
 			"Chose the image source for this process.\n" \
-			"Since modifying RGB/HSV will also affect HSV/RGB, you might need to select a proper\n" \
+			"RGB, HSV and HSL edits affect one another, so you might need to select a proper\n" \
 			"image source to make the adjustment more accurate.\n" \
 			"e.g. If you want to add yellow to areas with higher Value, here's an example setting:\n" \
 			"  Process I:  Select Input = Value, Select Output = Red\n" \
@@ -334,7 +397,7 @@ namespace XChannelCurve {
 			"However, please remember that, a process always adjusts the output of previous process!" \
 			, \
 			"使用哪一阶段图像的颜色数据用作输入。\n" \
-			"由于对RGB/HSV的调整会同步影响HSV/RGB，因此你可能需要调整图像数据源以保证复合调整的准确性。\n" \
+			"RGB、HSV与HSL调整会相互影响，因此你可能需要调整图像数据源以保证复合调整的准确性。\n" \
 			"举例：如果你想在明度较高的区域添加黄色（而非单纯的红或绿），那么可能需要类似下面的设置：\n" \
 			"  过程I：输入选择=明度，输出选择=红色\n" \
 			"  过程II：图像源=原始图像，输入选择=明度，输出选择=绿色\n" \
@@ -347,14 +410,32 @@ namespace XChannelCurve {
         LABEL("Select Input", "输入选择")
         ui_type = "combo";
         CATEGORY("Process IV (Black Line)", "过程 IV（黑色线）")
-        ITEMS("Red\0Green\0Blue\0Hue\0\Saturation\0Value\0", "红色\0绿色\0蓝色\0色相\0饱和度\0明度\0")
+        ITEMS("Red\0Green\0Blue\0Hue\0Saturation (HSV)\0Value (HSV)\0Saturation (HSL)\0Lightness (HSL)\0", "红色\0绿色\0蓝色\0色相\0饱和度（HSV）\0明度（HSV）\0饱和度（HSL）\0亮度（HSL）\0")
     > = 0;
 
     uniform int iCh4_Out<
         LABEL("Select Output", "输出选择")
         ui_type = "combo";
         CATEGORY("Process IV (Black Line)", "过程 IV（黑色线）")
-        ITEMS("RGB\0Red\0Green\0Blue\0Hue\0\Saturation\0Value\0", "RGB\0红色\0绿色\0蓝色\0色相\0饱和度\0明度\0")
+        ITEMS("RGB\0Red\0Green\0Blue\0Hue\0Saturation (HSV)\0Value (HSV)\0Saturation (HSL)\0Lightness (HSL)\0", "RGB\0红色\0绿色\0蓝色\0色相\0饱和度（HSV）\0明度（HSV）\0饱和度（HSL）\0亮度（HSL）\0")
+    > = 0;
+
+    uniform int iCh4_Mode<
+        LABEL("Curve Mode", "曲线解读方式")
+        ui_type = "combo";
+        CATEGORY("Process IV (Black Line)", "过程 IV（黑色线）")
+        ITEMS("Additive\0Multiplicative\0", "加性\0乘性\0")
+        TOOLTIP( \
+            "Additive: y=0 subtracts 1, y=0.5 is neutral, y=1 adds 1.\n" \
+            "Multiplicative: y=0 multiplies by 0, y=0.5 by 1, y=1 by 2.\n" \
+            "Values are clamped; hue wraps. Multiplying hue scales its numeric value,\n" \
+            "not a uniform hue rotation, and can introduce a seam in the hue circle." \
+            , \
+            "加性：y=0减去1，y=0.5不调整，y=1加上1。\n" \
+            "乘性：y=0乘以0，y=0.5乘以1，y=1乘以2。\n" \
+            "结果钳位到0~1，色相则循环取余。色相乘性为数值缩放，\n" \
+            "不是统一的色相旋转，可能在色相环接缝处产生不连续。" \
+        )
     > = 0;
 
 	uniform float2 fPoint4_0<
@@ -726,6 +807,29 @@ namespace XChannelCurve {
         return c.z * lerp(K.xxx, saturate(p - K.xxx), c.y);
     }
 
+    float3 RGBToHSL(float3 c) {
+        // Use the same six-sector hue convention as HSV without changing the legacy HSV path.
+        float4 K = float4(0.0, -1.0 / 3.0, 2.0 / 3.0, -1.0);
+        float4 p = c.g < c.b ? float4(c.bg, K.wz) : float4(c.gb, K.xy);
+        float4 q = c.r < p.x ? float4(p.xyw, c.r) : float4(c.r, p.yzx);
+        float minimum = min(q.w, q.y);
+        float chroma = q.x - minimum;
+        float sum = q.x + minimum;
+        // Equivalent to 1-abs(2*L-1), avoiding cancellation near black.
+        float range = min(sum, (1.0 - q.x) + (1.0 - minimum));
+        float safeChroma = chroma > 0.0 ? chroma : 1.0;
+        float hue = chroma > 0.0 ? abs(q.z + (q.w - q.y) / (6.0 * safeChroma)) : 0.0;
+        float saturation = saturate(chroma / (range > 0.0 ? range : 1.0));
+        return float3(hue, saturation, sum * 0.5);
+    }
+
+    float3 HSLToRGB(float3 c) {
+        float4 K = float4(1.0, 2.0 / 3.0, 1.0 / 3.0, 3.0);
+        float3 p = abs(frac(c.xxx + K.xyz) * 6.0 - K.www);
+        float chroma = 2.0 * min(c.z, 1.0 - c.z) * c.y;
+        return saturate((c.z - 0.5 * chroma) + chroma * saturate(p - K.xxx));
+    }
+
 	void applyXCurve(in float4 pos : SV_Position, in float2 texCoord : TEXCOORD, out float4 output : SV_Target) {
 		float2 texelSize = float2(1.0, 1.0) / float2(CURVEWINDOW_SZ, 4);
 		//float2 texelSize = 0.0;
@@ -733,6 +837,7 @@ namespace XChannelCurve {
 		float3 chRGB[5] = {curColor, curColor, curColor, curColor, curColor};
         int source[4] = {iCh1_In, iCh2_In, iCh3_In, iCh4_In};
         int target[4] = {iCh1_Out, iCh2_Out, iCh3_Out, iCh4_Out};
+        int mode[4] = {iCh1_Mode, iCh2_Mode, iCh3_Mode, iCh4_Mode};
 		int imageSrc[4] = {0, iCh2_InSrc, iCh3_InSrc, iCh4_InSrc};
         float src_val = 0;
 		const int4 iUseChannel = int4(bUseCh1, bUseCh2, bUseCh3, bUseCh4);
@@ -742,6 +847,9 @@ namespace XChannelCurve {
 				continue;
 			}
             float3 hsv = RGBToHSV(chRGB[imageSrc[i]]);
+            float3 hsl = float3(0.0, 0.0, 0.0);
+            if(source[i] == 6 || source[i] == 7)
+                hsl = RGBToHSL(chRGB[imageSrc[i]]);
             switch(source[i]){
                 case 0:
                     src_val = chRGB[imageSrc[i]].r;    
@@ -761,41 +869,59 @@ namespace XChannelCurve {
                 case 5:
                     src_val = hsv.z;    
                     break;
+                case 6: // HSL saturation
+                    src_val = hsl.y;
+                    break;
+                case 7: // HSL lightness
+                    src_val = hsl.z;
+                    break;
                 default:
                     src_val = hsv.z;
                     break;
             }
             float adjust = tex2D(sampXCurveData, float2(src_val, float(i)/4.0) + 0.5 * texelSize).x;
+            float gain = adjust * 2.0;
             adjust = (adjust - 0.5) * 2;
+            bool multiply = mode[i] == 1;
 			hsv = RGBToHSV(chRGB[i]); // 输出端作用在上次的输出上。
+            if(target[i] == 7 || target[i] == 8)
+                hsl = RGBToHSL(chRGB[i]); // Recompute for the target, not the selected input image.
 			chRGB[i+1] = chRGB[i];
             switch(target[i]){
                 case 0: // rgb
-                    chRGB[i+1] = saturate(chRGB[i] + adjust.xxx);
+                    chRGB[i+1] = saturate(multiply ? chRGB[i] * gain : chRGB[i] + adjust.xxx);
                     break;
                 case 1: // r
-                    chRGB[i+1].r = saturate(chRGB[i].r + adjust);
+                    chRGB[i+1].r = saturate(multiply ? chRGB[i].r * gain : chRGB[i].r + adjust);
                     break;
                 case 2: // g
-                    chRGB[i+1].g = saturate(chRGB[i].g + adjust); 
+                    chRGB[i+1].g = saturate(multiply ? chRGB[i].g * gain : chRGB[i].g + adjust);
                     break;
                 case 3: // b
-                    chRGB[i+1].b = saturate(chRGB[i].b + adjust);
+                    chRGB[i+1].b = saturate(multiply ? chRGB[i].b * gain : chRGB[i].b + adjust);
                     break;
                 case 4: // h
-                    hsv.x = frac(hsv.x + adjust);
+                    hsv.x = frac(multiply ? hsv.x * gain : hsv.x + adjust);
                     chRGB[i+1].rgb = HSVToRGB(hsv);
                     break;
                 case 5: // s
-                    hsv.y = saturate(hsv.y + adjust);
+                    hsv.y = saturate(multiply ? hsv.y * gain : hsv.y + adjust);
                     chRGB[i+1].rgb = HSVToRGB(hsv);
                     break;
                 case 6: // v
-                    hsv.z = saturate(hsv.z + adjust);
+                    hsv.z = saturate(multiply ? hsv.z * gain : hsv.z + adjust);
                     chRGB[i+1].rgb = HSVToRGB(hsv);
                     break;
+                case 7: // HSL saturation
+                    hsl.y = saturate(multiply ? hsl.y * gain : hsl.y + adjust);
+                    chRGB[i+1].rgb = HSLToRGB(hsl);
+                    break;
+                case 8: // HSL lightness
+                    hsl.z = saturate(multiply ? hsl.z * gain : hsl.z + adjust);
+                    chRGB[i+1].rgb = HSLToRGB(hsl);
+                    break;
                 default:
-                    chRGB[i+1].rgb = saturate(chRGB[i].rgb + adjust.xxx);
+                    chRGB[i+1].rgb = saturate(multiply ? chRGB[i].rgb * gain : chRGB[i].rgb + adjust.xxx);
                     break;
             }
         }
@@ -864,7 +990,7 @@ namespace XChannelCurve {
 	}
 
 	technique BX_XChannelCurve<
-		LABEL("BX::Cross Channel Curve (Alpha)", "BX::跨通道曲线内测版[BX_XChannelCurve]")
+		LABEL("BX::Cross Channel Curve V2", "BX::跨通道曲线v2[BX_XChannelCurve]")
 		TOOLTIP( \
 			"Cross channel curve tool WIP. Just for fun. Everything might be changed in the future.\n" \
 			"This shader is inspired by the cross channel curve tool in Krita, but I'm not sure if this behaves the same. \n"
@@ -903,7 +1029,7 @@ namespace XChannelCurve {
 	}
 
 	technique BX_XChannelCurve_Overlay<
-		LABEL("BX::Cross Channel Curve (Alpha) - Overlay", "BX::跨通道曲线内测版:覆盖层[BX_XChannelCurve_Overlay]")
+		LABEL("BX::Cross Channel Curve V2 - Overlay", "BX::跨通道曲线v2:覆盖层[BX_XChannelCurve_Overlay]")
 		TOOLTIP( \
 			"The overlay of the cross channel curve tool. You can place it seperately from the main technique.\n" \
 			"Just for fun. Everything might be changed in the future.\n" \
