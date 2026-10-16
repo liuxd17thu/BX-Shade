@@ -1,6 +1,6 @@
 // Simple Cross Channel Curve Tool For Fun!
-// version 0.3.0
-// Copyright (c) 2023-2024 BarricadeMKXX
+// version 0.4.0
+// Copyright (c) 2023-2026 BarricadeMKXX
 // License: MIT
 
 #include "ReShade.fxh"
@@ -48,6 +48,15 @@ namespace XChannelCurve {
 	// 	TOOLTIP("Setting to 1 = Enable the process. I~IV one by one.", "设为1表示使用相应过程，I~IV依次接力。")
 	// 	CATEGORY("Process", "过程")
 	// > = int4(1,1,1,1);
+
+	// 0 keeps the original natural cubic spline; 1 matches PrecisionCurves tangents.
+	uniform int iInterpolation <
+		ui_type = "combo";
+		LABEL("Interpolation", "插值方式")
+		CATEGORY("Interpolation", "插值")
+		ITEMS("Natural cubic spline\0Hermite\0",
+			  "自然三次样条\0Hermite\0")
+	> = 0;
 
 	uniform bool bUseCh1<
 		LABEL("Enable Proc I", "启用过程I")
@@ -679,7 +688,68 @@ namespace XChannelCurve {
 		barrier();
 	}
 
+	// Convert automatic Hermite tangents to the existing a,b,c,d texture format.
+	// Only lane zero writes a channel: there is no shared-memory communication.
+	void buildHermiteParameters(uint3 id) {
+		if (id.x != 0)
+			return;
+
+		int pointCount = round(tex2Dfetch(sampXPointN, int2(0, id.y)).x * 8);
+		float2 points[8];
+		float intervalWidth[8];
+		float segmentSlope[8];
+		float tangent[8];
+		for (int i = 0; i < 8; ++i) {
+			points[i] = tex2Dfetch(sampXPointData, int2(i, id.y)).xy;
+			intervalWidth[i] = 0.0;
+			segmentSlope[i] = 0.0;
+			tangent[i] = 0.0;
+		}
+
+		if (pointCount >= 2) {
+			// pointSequence already makes the active x coordinates strictly increasing.
+			for (int i = 0; i < pointCount - 1; ++i) {
+				intervalWidth[i] = points[i + 1].x - points[i].x;
+				segmentSlope[i] = (points[i + 1].y - points[i].y) / intervalWidth[i];
+			}
+			// Deliberately use secants, rather than standard PCHIP endpoint estimates.
+			tangent[0] = segmentSlope[0];
+			tangent[pointCount - 1] = segmentSlope[pointCount - 2];
+			for (int i = 1; i < pointCount - 1; ++i) {
+				float leftSlope = segmentSlope[i - 1];
+				float rightSlope = segmentSlope[i];
+				if (leftSlope * rightSlope <= 0.0) {
+					tangent[i] = 0.0;
+				} else {
+					float leftWeight = intervalWidth[i - 1] + 2.0 * intervalWidth[i];
+					float rightWeight = 2.0 * intervalWidth[i - 1] + intervalWidth[i];
+					tangent[i] = (leftWeight + rightWeight) /
+						(leftWeight / leftSlope + rightWeight / rightSlope);
+				}
+			}
+		}
+
+		for (int i = 0; i < 8; ++i) {
+			float4 coefficients = float4(0.0, 0.0, 0.0, 0.0);
+			if (i < pointCount - 1) {
+				float h = intervalWidth[i];
+				float k = segmentSlope[i];
+				float m0 = tangent[i];
+				float m1 = tangent[i + 1];
+				coefficients = float4(points[i].y, m0,
+					(3.0 * k - 2.0 * m0 - m1) / h,
+					(m0 + m1 - 2.0 * k) / (h * h));
+			}
+			tex2Dstore(wXCurveParam, int2(i, id.y), coefficients);
+		}
+	}
+
 	void solveMatrix(uint3 id : SV_DispatchThreadID){
+		if (iInterpolation == 1) {
+			buildHermiteParameters(id);
+			return;
+		}
+
 		const int size = round(tex2Dfetch(sampXPointN, int2(0,id.y)).x * 8);
 
 		// calculate dx & dy
