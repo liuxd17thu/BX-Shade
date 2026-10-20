@@ -10,8 +10,7 @@
 #define CURVEWINDOW_SZ 1024.0
 // #define CURVEPOINT_SZ 2.0
 
-
-namespace SimpleCurveTool {
+namespace BX_CurveTool {
 	uniform int ___ABOUT<
 		ui_type = "radio";
 		ui_label = " ";
@@ -685,12 +684,10 @@ namespace SimpleCurveTool {
 		passColor = lerp(passColor.rgb, tex1.rgb, tex1.a);
 	}
 
-	technique BX_ToyCurveTool<
-		LABEL("BX::Toy Curve Tool (Alpha)", "BX::曲线工具内测版[BX_ToyCurveTool]")
-		TOOLTIP("A simple curve tool WIP. Just for fun. Everything might be changed in the future.\n" \
-				"Author: BarricadeMKXX" \
+	technique BX_CurveTool<
+		LABEL("BX::Curve Tool", "BX::曲线工具")
+		TOOLTIP("Author: BarricadeMKXX" \
 				, \
-				"开发中的非正式版本，仅供娱乐，一切内容均有可能在后续版本中变化。\n" \
 				"作者：路障MKXX。" \
 				)
 	>
@@ -721,17 +718,12 @@ namespace SimpleCurveTool {
 		}
 	}
 
-	technique BX_ToyCurveTool_Overlay<
-		LABEL("BX::Toy Curve Tool (Alpha) - Overlay", "BX::曲线工具内测版:覆盖层[BX_ToyCurveTool_Overlay]")
-		TOOLTIP( \
-			"The overlay of the curve tool. You can place it seperately from the main technique.\n" \
-			"Just for fun. Everything might be changed in the future.\n" \
-			"Author: BarricadeMKXX" \
-			, \
-			"独立拆分出的覆盖层，可以和曲线工具本体分开放置在着色器列表的不同位置。\n" \
-			"开发中的非正式版本，仅供娱乐，一切内容均有可能在后续版本中变化。\n" \
-			"作者：路障MKXX。" \
-		)
+	technique BX_CurveTool_Overlay<
+		LABEL("BX::Curve Tool - Overlay", "BX::曲线工具:覆盖层")
+		TOOLTIP("Author: BarricadeMKXX" \
+				, \
+				"作者：路障MKXX。" \
+				)
 	>
 	{
 		pass drawOverlay{

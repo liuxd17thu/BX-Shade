@@ -6,11 +6,12 @@
 #include "ReShade.fxh"
 #include "ReShadeUI.fxh"
 #include "BX_Multilingual.fxh"
+#include "BX_Colors.fxh"
 
 #define CURVEWINDOW_SZ 1024.0
 // #define CURVEPOINT_SZ 2.0
 
-namespace XChannelCurve {
+namespace BX_XChannelCurve {
 	uniform int ___ABOUT<
 		ui_type = "radio";
 		ui_label = " ";
@@ -621,8 +622,6 @@ namespace XChannelCurve {
 	storage2D wXCurveParam{ Texture = texXCurveParam; };
 	sampler2D sampXCurveParam{ Texture = texXCurveParam; };
 
-	#define fmod(x, y)(x - y * round(x / y))
-
 	int pointSequence(in uint3 id, inout Points pts){
 		float2 output[8];
 		output[0] = pts.elem[0];
@@ -861,45 +860,6 @@ namespace XChannelCurve {
 		curveTex = curveData;
 	}
 
-    float3 RGBToHSV(float3 c) {
-        float4 K = float4(0.0, -1.0 / 3.0, 2.0 / 3.0, -1.0);
-        float4 p = c.g < c.b ? float4(c.bg, K.wz) : float4(c.gb, K.xy);
-        float4 q = c.r < p.x ? float4(p.xyw, c.r) : float4(c.r, p.yzx);
-
-        float d = q.x - min(q.w, q.y);
-        float e = 1.0e-10;
-        return float3(abs(q.z + (q.w - q.y) / (6.0 * d + e)), d / (q.x + e), q.x);
-    }
-
-    float3 HSVToRGB(float3 c) {
-        float4 K = float4(1.0, 2.0 / 3.0, 1.0 / 3.0, 3.0);
-        float3 p = abs(frac(c.xxx + K.xyz) * 6.0 - K.www);
-        return c.z * lerp(K.xxx, saturate(p - K.xxx), c.y);
-    }
-
-    float3 RGBToHSL(float3 c) {
-        // Use the same six-sector hue convention as HSV without changing the legacy HSV path.
-        float4 K = float4(0.0, -1.0 / 3.0, 2.0 / 3.0, -1.0);
-        float4 p = c.g < c.b ? float4(c.bg, K.wz) : float4(c.gb, K.xy);
-        float4 q = c.r < p.x ? float4(p.xyw, c.r) : float4(c.r, p.yzx);
-        float minimum = min(q.w, q.y);
-        float chroma = q.x - minimum;
-        float sum = q.x + minimum;
-        // Equivalent to 1-abs(2*L-1), avoiding cancellation near black.
-        float range = min(sum, (1.0 - q.x) + (1.0 - minimum));
-        float safeChroma = chroma > 0.0 ? chroma : 1.0;
-        float hue = chroma > 0.0 ? abs(q.z + (q.w - q.y) / (6.0 * safeChroma)) : 0.0;
-        float saturation = saturate(chroma / (range > 0.0 ? range : 1.0));
-        return float3(hue, saturation, sum * 0.5);
-    }
-
-    float3 HSLToRGB(float3 c) {
-        float4 K = float4(1.0, 2.0 / 3.0, 1.0 / 3.0, 3.0);
-        float3 p = abs(frac(c.xxx + K.xyz) * 6.0 - K.www);
-        float chroma = 2.0 * min(c.z, 1.0 - c.z) * c.y;
-        return saturate((c.z - 0.5 * chroma) + chroma * saturate(p - K.xxx));
-    }
-
 	void applyXCurve(in float4 pos : SV_Position, in float2 texCoord : TEXCOORD, out float4 output : SV_Target) {
 		float2 texelSize = float2(1.0, 1.0) / float2(CURVEWINDOW_SZ, 4);
 		//float2 texelSize = 0.0;
@@ -916,10 +876,10 @@ namespace XChannelCurve {
 				chRGB[i+1] = chRGB[i];
 				continue;
 			}
-            float3 hsv = RGBToHSV(chRGB[imageSrc[i]]);
+            float3 hsv = BXCol::RGBToHSV(chRGB[imageSrc[i]]);
             float3 hsl = float3(0.0, 0.0, 0.0);
             if(source[i] == 6 || source[i] == 7)
-                hsl = RGBToHSL(chRGB[imageSrc[i]]);
+                hsl = BXCol::RGBToHSL(chRGB[imageSrc[i]]);
             switch(source[i]){
                 case 0:
                     src_val = chRGB[imageSrc[i]].r;    
@@ -953,9 +913,9 @@ namespace XChannelCurve {
             float gain = adjust * 2.0;
             adjust = (adjust - 0.5) * 2;
             bool multiply = mode[i] == 1;
-			hsv = RGBToHSV(chRGB[i]); // 输出端作用在上次的输出上。
+			hsv = BXCol::RGBToHSV(chRGB[i]); // 输出端作用在上次的输出上。
             if(target[i] == 7 || target[i] == 8)
-                hsl = RGBToHSL(chRGB[i]); // Recompute for the target, not the selected input image.
+                hsl = BXCol::RGBToHSL(chRGB[i]); // Recompute for the target, not the selected input image.
 			chRGB[i+1] = chRGB[i];
             switch(target[i]){
                 case 0: // rgb
@@ -972,23 +932,23 @@ namespace XChannelCurve {
                     break;
                 case 4: // h
                     hsv.x = frac(multiply ? hsv.x * gain : hsv.x + adjust);
-                    chRGB[i+1].rgb = HSVToRGB(hsv);
+                    chRGB[i+1].rgb = BXCol::HSVToRGB(hsv);
                     break;
                 case 5: // s
                     hsv.y = saturate(multiply ? hsv.y * gain : hsv.y + adjust);
-                    chRGB[i+1].rgb = HSVToRGB(hsv);
+                    chRGB[i+1].rgb = BXCol::HSVToRGB(hsv);
                     break;
                 case 6: // v
                     hsv.z = saturate(multiply ? hsv.z * gain : hsv.z + adjust);
-                    chRGB[i+1].rgb = HSVToRGB(hsv);
+                    chRGB[i+1].rgb = BXCol::HSVToRGB(hsv);
                     break;
                 case 7: // HSL saturation
                     hsl.y = saturate(multiply ? hsl.y * gain : hsl.y + adjust);
-                    chRGB[i+1].rgb = HSLToRGB(hsl);
+                    chRGB[i+1].rgb = BXCol::HSLToRGB(hsl);
                     break;
                 case 8: // HSL lightness
                     hsl.z = saturate(multiply ? hsl.z * gain : hsl.z + adjust);
-                    chRGB[i+1].rgb = HSLToRGB(hsl);
+                    chRGB[i+1].rgb = BXCol::HSLToRGB(hsl);
                     break;
                 default:
                     chRGB[i+1].rgb = saturate(multiply ? chRGB[i].rgb * gain : chRGB[i].rgb + adjust.xxx);
@@ -1060,14 +1020,12 @@ namespace XChannelCurve {
 	}
 
 	technique BX_XChannelCurve<
-		LABEL("BX::Cross Channel Curve V2", "BX::跨通道曲线v2[BX_XChannelCurve]")
+		LABEL("BX::Cross Channel Curve V2", "BX::跨通道曲线v2")
 		TOOLTIP( \
-			"Cross channel curve tool WIP. Just for fun. Everything might be changed in the future.\n" \
-			"This shader is inspired by the cross channel curve tool in Krita, but I'm not sure if this behaves the same. \n"
+			"This shader is inspired by the cross channel curve tool in Krita/Affinity, but I'm not sure if this behaves the same. \n"
 			"Author: BarricadeMKXX\n" \
 			, \
-			"开发中的非正式版本，仅供娱乐，一切内容均有可能在后续版本中变化。\n" \
-			"该工具的灵感来源于Krita的跨通道曲线工具，但并不保证行为与其一致。\n" \
+			"该工具的灵感来源于Krita/Affinity的跨通道曲线工具，但并不保证行为与其一致。\n" \
 			"作者：路障MKXX。" \
 		)
 	>
@@ -1099,14 +1057,10 @@ namespace XChannelCurve {
 	}
 
 	technique BX_XChannelCurve_Overlay<
-		LABEL("BX::Cross Channel Curve V2 - Overlay", "BX::跨通道曲线v2:覆盖层[BX_XChannelCurve_Overlay]")
+		LABEL("BX::Cross Channel Curve V2 - Overlay", "BX::跨通道曲线v2:覆盖层")
 		TOOLTIP( \
-			"The overlay of the cross channel curve tool. You can place it seperately from the main technique.\n" \
-			"Just for fun. Everything might be changed in the future.\n" \
 			"Author: BarricadeMKXX" \
 			, \
-			"独立拆分出的覆盖层，可以和曲线工具本体分开放置在着色器列表的不同位置。\n" \
-			"开发中的非正式版本，仅供娱乐，一切内容均有可能在后续版本中变化。\n" \
 			"作者：路障MKXX。" \
 		)
 	>

@@ -14,6 +14,14 @@
 #endif
 
 #if !defined(LANGUAGE) || LANGUAGE == LANG_en
+	#define TEXT(en, zh_cn) ui_text = en;
+#elif LANGUAGE == LANG_zh_cn
+	#define TEXT(en, zh_cn) ui_text = zh_cn;
+#else
+	#define TEXT(en, zh_cn) ui_text = en;
+#endif
+
+#if !defined(LANGUAGE) || LANGUAGE == LANG_en
 	#define CATEGORY(en, zh_cn) ui_category = en;
 #elif LANGUAGE == LANG_zh_cn
 	#define CATEGORY(en, zh_cn) ui_category = zh_cn;
