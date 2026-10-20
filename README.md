@@ -2,7 +2,9 @@
 Some ReShade Shaders made by BarricadeMKXX
 
 ## Curve Tool & Cross-Channel Curve Tool
-### `BX_ToyCurveTool.fx`:
+### `BX_CurveTool.fx`:
+
+Previously BX_ToyCurveTool.fx.
 
 Adjust color in game with R/G/B/RGB curves.
 
@@ -14,6 +16,10 @@ A modified version of curve tool.
 It is possible to use different channels (RGBHSV) as the curve input and output.
 
 For example, you can adjust value(V) based on the strength of red(R), or adjust saturation(S) for different Hue(H).
+
+### `BX_GradientMapII.fx`
+
+Rewritten GradientMap filter, based on Sumi's implmentation. 
 
 ### Known Issue
 The UI is kind of difficult to use ...
